@@ -1,0 +1,175 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-heading: var(--font-serif);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/*
+ * Wedding Planner UI palette — strictly black, white, grey.
+ * The user's generated wedding palette provides all other colour.
+ */
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  --primary: #000000;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #000000;
+  --muted: #f5f5f5;
+  --muted-foreground: #525252;
+  --accent: #f5f5f5;
+  --accent-foreground: #000000;
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #000000;
+  --input: #000000;
+  --ring: #000000;
+  --radius: 0.125rem;
+
+  /*
+   * Swatch chrome — deliberately softer than the editorial frame borders so
+   * the wedding colours stay dominant (iteration §14).
+   */
+  --swatch-border: #e5e5e5;
+  --swatch-radius: 10px;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+::selection {
+  background: #000000;
+  color: #ffffff;
+}
+
+/* Soft swatch framing — subtle grey edge, gentle corners, no heavy shadow */
+.swatch-frame {
+  border: 1px solid var(--swatch-border);
+  border-radius: var(--swatch-radius);
+}
+
+/* Composite strips built from adjacent colour cells (cover, reveal, saved) */
+.swatch-strip {
+  border: 1px solid var(--swatch-border);
+  border-radius: var(--swatch-radius);
+  overflow: hidden;
+}
+
+.swatch-strip > * + * {
+  border-left: 1px solid var(--swatch-border);
+}
+
+/*
+ * Selectable option states (iteration 02 §24–28).
+ *
+ * One canonical interaction contract for every onboarding choice:
+ *   default white/black → hover light grey (unselected only)
+ *   selected black/white, stable under hover and focus
+ *
+ * Selected wins over hover by construction: the hover rule is scoped to
+ * :not([aria-checked="true"]), so a selected card can never transition into
+ * its unselected appearance.
+ */
+.option-card {
+  border: 1px solid #000000;
+  background-color: #ffffff;
+  color: #000000;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.option-card:hover:not([aria-checked="true"]):not(:disabled) {
+  background-color: var(--secondary);
+}
+
+.option-card[aria-checked="true"],
+.option-card[aria-checked="true"]:hover {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.option-card:focus-visible {
+  outline: 2px solid #000000;
+  outline-offset: 2px;
+}
+
+.option-card[aria-checked="true"]:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: -4px;
+}
+
+.option-card:disabled {
+  border-color: #d4d4d4;
+  background-color: var(--swatch-border);
+  color: var(--muted-foreground);
+  cursor: not-allowed;
+}
+
+@media print {
+  .swatch-frame,
+  .swatch-strip {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* Print / PDF export for the style guide (PRD §34-9) */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  article,
+  section,
+  header,
+  footer {
+    break-inside: avoid;
+  }
+
+  h1,
+  h2,
+  h3 {
+    break-after: avoid;
+  }
+}

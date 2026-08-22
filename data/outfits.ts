@@ -1,0 +1,175 @@
+import type { Outfit, WeddingTypeId } from "@/types";
+
+const TRAD_TYPES: WeddingTypeId[] = ["traditional", "traditional-white"];
+const ALL: WeddingTypeId[] = [
+  "traditional",
+  "white",
+  "traditional-white",
+  "civil",
+  "other",
+];
+const WESTERN_TYPES: WeddingTypeId[] = ["white", "civil", "other", "traditional-white"];
+
+/**
+ * MVP outfit library (PRD §47). Categories are contextual — the styling
+ * engine filters by wedding type, style and group.
+ */
+export const OUTFITS: Outfit[] = [
+  // -------------------------------- Female ---------------------------------
+  {
+    id: "bridal-gown",
+    name: "Bridal gown",
+    gender: "female",
+    weddingTypes: [...WESTERN_TYPES],
+    styles: ["classic", "elegant", "modern", "romantic", "minimal", "luxury", "bold"],
+    groups: ["couple"],
+    note: "The centrepiece silhouette; palette colours work best as sashes, embroidery or bouquets.",
+  },
+  {
+    id: "floor-length-gown",
+    name: "Floor-length gown",
+    gender: "female",
+    weddingTypes: [...WESTERN_TYPES, "traditional-white"],
+    styles: ["elegant", "romantic", "luxury", "classic"],
+    groups: ["bridesmaids"],
+    note: "A flowing silhouette that carries colour beautifully.",
+  },
+  {
+    id: "a-line-dress",
+    name: "A-line dress",
+    gender: "female",
+    weddingTypes: [...WESTERN_TYPES],
+    styles: ["classic", "minimal", "modern", "romantic"],
+    groups: ["bridesmaids", "guests"],
+    note: "Universally flattering; easy to tailor in any palette colour.",
+  },
+  {
+    id: "iro-and-buba",
+    name: "Iro and Buba",
+    gender: "female",
+    weddingTypes: [...TRAD_TYPES],
+    styles: ["traditional", "classic", "elegant", "bold"],
+    groups: ["bride-family", "groom-family", "guests"],
+    note: "Timeless Yoruba pairing; striking in aso-oke or lace.",
+  },
+  {
+    id: "lace-outfit",
+    name: "Lace outfit",
+    gender: "female",
+    weddingTypes: [...TRAD_TYPES, "white"],
+    styles: ["elegant", "luxury", "romantic", "classic", "traditional"],
+    groups: ["bride-family", "groom-family"],
+    note: "The aso-ebi staple for family celebrations.",
+  },
+  {
+    id: "aso-oke-outfit",
+    name: "Aso-oke outfit",
+    gender: "female",
+    weddingTypes: [...TRAD_TYPES],
+    styles: ["traditional", "luxury", "bold", "classic"],
+    groups: ["couple", "bride-family", "groom-family"],
+    note: "Hand-woven prestige fabric for the couple's traditional look.",
+  },
+  {
+    id: "george-outfit",
+    name: "George outfit",
+    gender: "female",
+    weddingTypes: [...TRAD_TYPES],
+    styles: ["traditional", "bold", "luxury"],
+    groups: ["bride-family", "groom-family"],
+    note: "Rich wrapper sets with blouses; common at Eastern traditional weddings.",
+  },
+  {
+    id: "skirt-and-blouse",
+    name: "Skirt and blouse",
+    gender: "female",
+    weddingTypes: [...TRAD_TYPES, "civil"],
+    styles: ["classic", "modern", "elegant", "minimal"],
+    groups: ["bride-family", "guests"],
+    note: "Flexible two-piece that mixes traditional and contemporary lines.",
+  },
+  {
+    id: "kaftan-female",
+    name: "Kaftan",
+    gender: "female",
+    weddingTypes: [...ALL],
+    styles: ["minimal", "modern", "romantic", "elegant"],
+    groups: ["guests", "bride-family"],
+    note: "Effortless and graceful; lovely in silk or chiffon.",
+  },
+  {
+    id: "traditional-formalwear-female",
+    name: "Traditional formalwear",
+    gender: "female",
+    weddingTypes: [...ALL],
+    styles: ["traditional", "classic", "elegant"],
+    groups: ["guests", "bride-family", "groom-family"],
+    note: "A respectful default for family and guests across wedding types.",
+  },
+  // --------------------------------- Male ----------------------------------
+  {
+    id: "agbada",
+    name: "Agbada",
+    gender: "male",
+    weddingTypes: [...TRAD_TYPES],
+    styles: ["luxury", "bold", "traditional", "classic"],
+    groups: ["couple", "groomsmen", "groom-family", "bride-family"],
+    note: "Grand three-piece flow; the statement piece of Nigerian menswear.",
+  },
+  {
+    id: "senator",
+    name: "Senator",
+    gender: "male",
+    weddingTypes: [...TRAD_TYPES, "civil"],
+    styles: ["elegant", "modern", "minimal", "classic"],
+    groups: ["groomsmen", "groom-family", "couple"],
+    note: "Sharp two-piece; refined in damask or brocade.",
+  },
+  {
+    id: "kaftan-male",
+    name: "Kaftan",
+    gender: "male",
+    weddingTypes: [...ALL],
+    styles: ["minimal", "classic", "modern", "elegant"],
+    groups: ["guests", "groomsmen", "groom-family"],
+    note: "Comfortable and dignified across settings.",
+  },
+  {
+    id: "suit",
+    name: "Suit",
+    gender: "male",
+    weddingTypes: [...WESTERN_TYPES],
+    styles: ["classic", "modern", "elegant", "minimal", "luxury"],
+    groups: ["groomsmen", "couple", "guests"],
+    note: "Crisp and versatile; pairs with palette-coloured accessories.",
+  },
+  {
+    id: "tuxedo",
+    name: "Tuxedo",
+    gender: "male",
+    weddingTypes: [...WESTERN_TYPES],
+    styles: ["luxury", "bold", "elegant"],
+    groups: ["couple", "groomsmen"],
+    note: "Black-tie drama for evening receptions.",
+  },
+  {
+    id: "formal-shirt-trousers",
+    name: "Formal shirt and trousers",
+    gender: "male",
+    weddingTypes: [...ALL],
+    styles: ["minimal", "modern", "classic"],
+    groups: ["guests"],
+    note: "A simple base guests can lift with recommended colours.",
+  },
+  {
+    id: "traditional-formalwear-male",
+    name: "Traditional formalwear",
+    gender: "male",
+    weddingTypes: [...ALL],
+    styles: ["traditional", "classic"],
+    groups: ["guests", "bride-family", "groom-family"],
+    note: "A respectful default for family and guests across wedding types.",
+  },
+];
+
+export const OUTFIT_BY_ID = new Map(OUTFITS.map((o) => [o.id, o]));
