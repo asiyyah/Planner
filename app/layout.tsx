@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Instrument_Serif } from "next/font/google";
 import "./globals.css";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { SiteNav } from "@/components/site-nav";
 
 const inter = Inter({
@@ -32,10 +31,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${inter.variable} ${instrumentSerif.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-white text-black">
-        <TooltipProvider delayDuration={200}>
-          <SiteNav />
-          <div className="flex-1">{children}</div>
-        </TooltipProvider>
+        <SiteNav />
+        <div className="flex-1">{children}</div>
       </body>
     </html>
   );

@@ -1,20 +1,45 @@
 import type { Metadata } from "next";
 import { decodeInputs } from "@/lib/state";
 import { generateStyleGuide } from "@/lib/styling";
+import { guideTitle } from "@/lib/guide-title";
+import type { StyleGuide } from "@/types";
 import { StyleGuideView } from "@/components/guide/style-guide-view";
 import Link from "next/link";
 
-export const metadata: Metadata = {
-  title: "Your Style Guide",
+type GuidePageProps = {
+  searchParams: Promise<{ d?: string | string[] }>;
 };
 
-type GuidePageProps = {
-  searchParams: Promise<{ d?: string }>;
-};
+/** Decode `?d=` into a guide; null when missing, malformed or unbuildable. */
+function guideFromParam(d: string | string[] | undefined): StyleGuide | null {
+  const raw = Array.isArray(d) ? d[0] : d;
+  const inputs = raw ? decodeInputs(raw) : null;
+  if (!inputs) return null;
+  try {
+    return generateStyleGuide(inputs);
+  } catch {
+    return null;
+  }
+}
+
+/** Per-guide title and preview text so shared links (e.g. WhatsApp) read well. */
+export async function generateMetadata({
+  searchParams,
+}: GuidePageProps): Promise<Metadata> {
+  const guide = guideFromParam((await searchParams).d);
+  if (!guide) return { title: "Your Style Guide" };
+  const title = guideTitle(guide);
+  const description = guide.palette.explanation;
+  return {
+    title,
+    description,
+    openGraph: { title, description, type: "article" },
+  };
+}
 
 export default async function GuidePage({ searchParams }: GuidePageProps) {
   const { d } = await searchParams;
-  const inputs = d ? decodeInputs(d) : null;
+  const inputs = d ? decodeInputs(Array.isArray(d) ? d[0] : d) : null;
 
   if (!inputs) {
     return (

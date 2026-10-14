@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useReducedMotion } from "framer-motion";
 import { generatePalette } from "@/lib/color/palette";
@@ -146,12 +147,12 @@ export function RevealStep({
               className="mt-10 space-y-6"
             >
               <p className="font-heading text-3xl">Your palette is ready.</p>
-              <a
+              <Link
                 href={guideHref}
                 className="inline-block border border-black bg-black px-10 py-4 text-sm uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black"
               >
                 View your style guide →
-              </a>
+              </Link>
             </motion.div>
           ) : null}
         </>

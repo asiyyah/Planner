@@ -1,12 +1,5 @@
-import type { Fabric, WeddingTypeId } from "@/types";
-
-const ALL_WEDDING_TYPES: WeddingTypeId[] = [
-  "traditional",
-  "white",
-  "traditional-white",
-  "civil",
-  "other",
-];
+import { WEDDING_TYPE_IDS as ALL_WEDDING_TYPES } from "@/lib/constants";
+import type { Fabric } from "@/types";
 
 /**
  * MVP fabric library (PRD §46). Metadata describes where each fabric is

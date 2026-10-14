@@ -165,7 +165,6 @@ export type DecorGuide = {
 };
 
 export type StyleGuide = {
-  version: 2;
   inputs: PlannerInputs;
   palette: Palette;
   /** Two exclusive couple looks (iteration 02). */
@@ -207,9 +206,13 @@ export type Outfit = {
   note?: string;
 };
 
+/**
+ * A guide saved on this device. Only the inputs are stored: generation is
+ * deterministic, so the guide is regenerated whenever it is opened.
+ */
 export type SavedGuide = {
   id: string;
   name: string;
   savedAt: string;
-  guide: StyleGuide;
+  inputs: PlannerInputs;
 };

@@ -4,7 +4,6 @@ import {
   hexToRgb,
   hslToHex,
   hueDistance,
-  makeColor,
   normalizeHue,
 } from "@/lib/color/conversion";
 
@@ -54,14 +53,5 @@ describe("hslToHex", () => {
     for (const hex of samples) {
       expect(hslToHex(hexToHsl(hex))).toBe(hex);
     }
-  });
-});
-
-describe("makeColor", () => {
-  it("builds a normalized Color", () => {
-    const color = makeColor("test", "Test", { h: -40, s: 50.44, l: 60 }, "soft");
-    expect(color.hex).toMatch(/^#[0-9A-F]{6}$/);
-    expect(color.hue).toBe(320);
-    expect(color.saturation).toBeCloseTo(50.4, 1);
   });
 });

@@ -1,16 +1,13 @@
 import { FABRICS } from "@/data/fabrics";
 import { OUTFITS } from "@/data/outfits";
-import { snapToLibrary } from "@/lib/color/palette";
+import { TRADITIONAL_TYPES } from "@/lib/constants";
 import type {
-  Color,
   FabricKind,
   OutfitGender,
   WeddingGroup,
   WeddingStyleId,
   WeddingTypeId,
 } from "@/types";
-
-const TRADITIONAL_TYPES: WeddingTypeId[] = ["traditional", "traditional-white"];
 
 /**
  * Multi-type scoring (iteration 02 §13–18): selections reward outfits and
@@ -145,19 +142,4 @@ export function selectOutfits(
   limit = 2
 ): string[] {
   return rankOutfits(gender, group, weddingTypes, styles).slice(0, limit);
-}
-
-/** Derive a related library colour from a base colour by shifting depth. */
-export function deriveColor(
-  base: Color,
-  deltaSaturation: number,
-  deltaLightness: number,
-  excludeIds: string[] = []
-): Color | undefined {
-  const target = {
-    h: base.hue,
-    s: Math.max(8, Math.min(90, base.saturation + deltaSaturation)),
-    l: Math.max(12, Math.min(94, base.lightness + deltaLightness)),
-  };
-  return snapToLibrary(target, excludeIds);
 }

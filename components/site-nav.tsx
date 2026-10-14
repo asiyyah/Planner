@@ -1,17 +1,29 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  getLastGuide,
+  getServerLastGuide,
+  subscribeLastGuide,
+} from "@/lib/last-guide";
 import { cn } from "@/lib/utils";
-
-const links = [
-  { href: "/plan", label: "Plan" },
-  { href: "/guide", label: "Style Guide" },
-  { href: "/saved", label: "Saved" },
-];
 
 export function SiteNav() {
   const pathname = usePathname();
+  const lastGuide = useSyncExternalStore(
+    subscribeLastGuide,
+    getLastGuide,
+    getServerLastGuide
+  );
+  const guideHref = lastGuide ? `/guide?d=${lastGuide}` : "/guide";
+
+  const links = [
+    { href: "/plan", match: "/plan", label: "Plan" },
+    { href: guideHref, match: "/guide", label: "Style Guide" },
+    { href: "/saved", match: "/saved", label: "Saved" },
+  ];
 
   return (
     <header className="border-b border-black bg-white print:hidden">
@@ -26,11 +38,11 @@ export function SiteNav() {
         <nav aria-label="Main" className="flex items-center gap-1 sm:gap-2">
           {links.map((link) => (
             <Link
-              key={link.href}
+              key={link.match}
               href={link.href}
               className={cn(
                 "px-2 py-1 text-sm uppercase tracking-widest transition-colors hover:text-neutral-500 sm:px-3",
-                pathname?.startsWith(link.href)
+                pathname?.startsWith(link.match)
                   ? "text-black underline underline-offset-8"
                   : "text-black/70"
               )}
@@ -39,7 +51,7 @@ export function SiteNav() {
             </Link>
           ))}
           <Link
-            href="/plan"
+            href={lastGuide ? guideHref : "/plan"}
             className="ml-2 hidden border border-black bg-black px-4 py-2 text-xs uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black sm:inline-block"
           >
             My Wedding →

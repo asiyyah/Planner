@@ -1,13 +1,8 @@
+import {
+  TRADITIONAL_TYPES as TRAD_TYPES,
+  WEDDING_TYPE_IDS as ALL,
+} from "@/lib/constants";
 import type { Outfit, WeddingTypeId } from "@/types";
-
-const TRAD_TYPES: WeddingTypeId[] = ["traditional", "traditional-white"];
-const ALL: WeddingTypeId[] = [
-  "traditional",
-  "white",
-  "traditional-white",
-  "civil",
-  "other",
-];
 const WESTERN_TYPES: WeddingTypeId[] = ["white", "civil", "other", "traditional-white"];
 
 /**
@@ -29,7 +24,7 @@ export const OUTFITS: Outfit[] = [
     id: "floor-length-gown",
     name: "Floor-length gown",
     gender: "female",
-    weddingTypes: [...WESTERN_TYPES, "traditional-white"],
+    weddingTypes: [...WESTERN_TYPES],
     styles: ["elegant", "romantic", "luxury", "classic"],
     groups: ["bridesmaids"],
     note: "A flowing silhouette that carries colour beautifully.",

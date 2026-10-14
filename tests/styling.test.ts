@@ -225,3 +225,53 @@ describe("styling engine — robustness", () => {
     expect(performance.now() - start).toBeLessThan(500);
   });
 });
+
+describe("styling engine — audit regressions", () => {
+  const guide = generateStyleGuide(GOLDEN);
+
+  it("decor's secondary is the user's second colour, not a generated one", () => {
+    expect(guide.decor.secondary.hex).toBe("#9CAF88");
+  });
+
+  it("never recommends white or near-white to any group", () => {
+    for (const types of [["white"], ["traditional"], ["traditional-white"]] as const) {
+      const g = generateStyleGuide({ ...GOLDEN, weddingTypes: [...types] });
+      for (const hex of groupColours(g)) {
+        expect(hexesNearDuplicate(hex, "#FFFFFF")).toBe(false);
+        expect(hexesNearDuplicate(hex, "#FFFFF4")).toBe(false);
+      }
+    }
+  });
+
+  it("asks guests to avoid white and ivory at a white wedding", () => {
+    const g = generateStyleGuide({ ...GOLDEN, weddingTypes: ["white"] });
+    const avoid = g.guests.avoid.map((c) => c.name);
+    expect(avoid).toContain("White");
+    expect(avoid).toContain("Ivory");
+  });
+
+  it("uses shared-colour copy for bridesmaids in same mode", () => {
+    const g = generateStyleGuide({ ...GOLDEN, coordination: "same" });
+    expect(g.bridesmaids.notes).toContain("shared across the wedding party");
+  });
+
+  it("keeps couple-claimed colours out of party accessory copy", () => {
+    const coupleNames = guide.couple.looks
+      .flatMap((l) => l.colors)
+      .map((c) => c.name.toLowerCase());
+    for (const group of [guide.bridesmaids, guide.groomsmen]) {
+      const text = (group.accessories ?? []).join(" ").toLowerCase();
+      for (const name of coupleNames) {
+        expect(text).not.toContain(name);
+      }
+    }
+  });
+
+  it("gives two same-hue anchors at least one supporting colour", () => {
+    const g = generateStyleGuide({
+      ...GOLDEN,
+      colors: ["#336699", "#7A9CC2"],
+    });
+    expect(g.palette.supporting.length).toBeGreaterThan(0);
+  });
+});

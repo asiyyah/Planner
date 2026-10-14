@@ -78,8 +78,7 @@ export function neutralTone(base: Hsl): Hsl {
 }
 
 /** True when a colour already sits within wedding-friendly bounds. */
-export function isWeddingFriendly({ h, s, l }: Hsl): boolean {
-  void normalizeHue(h);
+export function isWeddingFriendly({ s, l }: Hsl): boolean {
   if (s < 6) return true;
   // Near-white / near-black reads as neutral regardless of nominal saturation
   // (HSL saturation blows up at the lightness extremes).

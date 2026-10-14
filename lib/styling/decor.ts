@@ -36,8 +36,10 @@ export function buildDecor(ctx: StylingContext): DecorGuide {
   const { palette } = ctx;
   const base = palette.neutral;
   const primary = palette.hero;
-  const secondary = palette.supporting[0] ?? palette.secondary;
-  const accent = palette.accent ?? palette.secondary;
+  // The user's second colour (or the promoted companion) leads decor
+  // support, so a picked colour is never skipped for a generated one.
+  const secondary = palette.secondary;
+  const accent = palette.accent ?? palette.supporting[0] ?? palette.neutral;
 
   const elements: DecorElement[] = DECOR_TEMPLATES.map((template) => ({
     category: template.category,

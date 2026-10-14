@@ -13,13 +13,6 @@ function SwatchChip({
       className="swatch-frame inline-flex items-center gap-2 px-3 py-2 text-sm"
       style={{ backgroundColor: hex, color: readableTextColor(hex) }}
     >
-      <span
-        aria-hidden="true"
-        className="h-3 w-3 border border-black"
-        style={{
-          backgroundColor: hex,
-        }}
-      />
       {name}
       <span className="font-mono text-[10px] uppercase opacity-60">{hex}</span>
     </span>
@@ -38,7 +31,9 @@ export function GuestsPanel({
     <article className="border border-black bg-white">
       <header className="flex items-baseline justify-between border-b border-black px-6 py-4">
         <span className="font-mono text-sm text-neutral-500">{number}</span>
-        <h2 className="text-xs uppercase tracking-[0.25em]">Guests</h2>
+        <h2 id="guests" className="text-xs uppercase tracking-[0.25em]">
+          Guests
+        </h2>
       </header>
 
       <div className="grid gap-8 p-6 md:grid-cols-3">
@@ -55,7 +50,7 @@ export function GuestsPanel({
             </h3>
             <div className="mt-3 flex flex-wrap gap-2">
               {colors.map((color) => (
-                <SwatchChip key={color.name} {...color} />
+                <SwatchChip key={color.hex} {...color} />
               ))}
               {colors.length === 0 ? (
                 <p className="text-sm text-neutral-400">—</p>

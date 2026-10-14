@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeInputs } from "@/lib/state";
-import type { SavedGuide } from "@/types";
+import type { PlannerInputs, SavedGuide } from "@/types";
 
 /**
  * Regression tests for the saved page crash (iteration 02 hotfix): legacy
@@ -51,6 +51,13 @@ async function loadWith(storage: Record<string, string>) {
   return import("@/lib/storage");
 }
 
+const INPUTS: PlannerInputs = {
+  colors: ["#5C4033", "#9CAF88"],
+  weddingTypes: ["traditional", "white"],
+  styles: ["elegant"],
+  coordination: "different",
+};
+
 let storage: Record<string, string>;
 
 beforeEach(() => {
@@ -74,9 +81,9 @@ describe("saved-guide migration", () => {
     const { listSavedGuides } = await loadWith(storage);
     const [guide] = listSavedGuides();
 
-    expect(guide.guide.inputs.colors).toEqual(["#5C4033", "#9CAF88"]);
-    expect(() => encodeInputs(guide.guide.inputs)).not.toThrow();
-    expect(encodeInputs(guide.guide.inputs)).toBe(
+    expect(guide.inputs.colors).toEqual(["#5C4033", "#9CAF88"]);
+    expect(() => encodeInputs(guide.inputs)).not.toThrow();
+    expect(encodeInputs(guide.inputs)).toBe(
       encodeURIComponent("5C4033,9CAF88|traditional-white|elegant|different")
     );
   });
@@ -96,7 +103,7 @@ describe("saved-guide migration", () => {
     const { listSavedGuides } = await loadWith(storage);
     const [guide] = listSavedGuides();
 
-    expect(guide.guide.inputs).toEqual({
+    expect(guide.inputs).toEqual({
       colors: ["#5C4033"],
       weddingTypes: ["white"],
       styles: [],
@@ -118,8 +125,8 @@ describe("saved-guide migration", () => {
     const { listSavedGuides } = await loadWith(storage);
     const [guide] = listSavedGuides();
 
-    expect(guide.guide.inputs.weddingTypes).toEqual(["traditional", "white"]);
-    expect(guide.guide.inputs.colors).toHaveLength(3);
+    expect(guide.inputs.weddingTypes).toEqual(["traditional", "white"]);
+    expect(guide.inputs.colors).toHaveLength(3);
   });
 
   it("falls back to white when every stored wedding type is unknown", async () => {
@@ -135,7 +142,7 @@ describe("saved-guide migration", () => {
     ]);
 
     const { listSavedGuides } = await loadWith(storage);
-    expect(listSavedGuides()[0].guide.inputs.weddingTypes).toEqual(["white"]);
+    expect(listSavedGuides()[0].inputs.weddingTypes).toEqual(["white"]);
   });
 
   it("drops entries without any usable colour", async () => {
@@ -150,7 +157,7 @@ describe("saved-guide migration", () => {
     expect(listSavedGuides()).toEqual([]);
   });
 
-  it("drops entries whose palette cannot be rendered", async () => {
+  it("recovers legacy entries whose stored palette is broken (regenerated on read)", async () => {
     storage[KEY] = JSON.stringify([
       entry({
         palette: { ...PALETTE, supporting: undefined },
@@ -160,17 +167,30 @@ describe("saved-guide migration", () => {
     ]);
 
     const { listSavedGuides } = await loadWith(storage);
-    expect(listSavedGuides()).toEqual([]);
+    expect(listSavedGuides().map((g) => g.inputs.colors)).toEqual([
+      ["#FFFFFF"],
+      ["#FFFFFF"],
+    ]);
   });
 
-  it("treats corrupt or non-array payloads as empty", async () => {
+  it("treats corrupt or non-array payloads as empty but backs them up", async () => {
     storage[KEY] = "{not json";
     let mod = await loadWith(storage);
     expect(mod.listSavedGuides()).toEqual([]);
+    expect(storage[mod.CORRUPT_BACKUP_KEY]).toBe("{not json");
 
+    storage = {};
     storage[KEY] = JSON.stringify({ not: "an array" });
     mod = await loadWith(storage);
     expect(mod.listSavedGuides()).toEqual([]);
+    expect(storage[mod.CORRUPT_BACKUP_KEY]).toBe(JSON.stringify({ not: "an array" }));
+  });
+
+  it("does not let a later save overwrite the corrupt backup's content", async () => {
+    storage[KEY] = "{not json";
+    const { saveGuide, CORRUPT_BACKUP_KEY } = await loadWith(storage);
+    saveGuide("Fresh", INPUTS);
+    expect(storage[CORRUPT_BACKUP_KEY]).toBe("{not json");
   });
 
   it("keeps working when localStorage is unavailable (SSR)", async () => {
@@ -181,23 +201,32 @@ describe("saved-guide migration", () => {
     expect(listSavedGuides()).toEqual([]);
   });
 
+  it("stores only the inputs on save", async () => {
+    const { saveGuide } = await loadWith(storage);
+    saveGuide("Round trip", INPUTS);
+    const [stored] = JSON.parse(storage[KEY]);
+    expect(Object.keys(stored).sort()).toEqual(["id", "inputs", "name", "savedAt"]);
+    expect(stored.inputs).toEqual(INPUTS);
+  });
+
   it("survives save → read round-trips for freshly saved guides", async () => {
     const { saveGuide, listSavedGuides } = await loadWith(storage);
-    const guide = {
-      version: 2,
-      inputs: {
-        colors: ["#5C4033", "#9CAF88"],
-        weddingTypes: ["traditional", "white"],
-        styles: ["elegant"],
-        coordination: "different",
-      },
-      palette: PALETTE,
-    } as unknown as Parameters<typeof saveGuide>[1];
-
-    saveGuide("Round trip", guide);
+    saveGuide("Round trip", INPUTS);
     const [saved] = listSavedGuides() as [SavedGuide];
     expect(saved.name).toBe("Round trip");
-    expect(saved.guide.inputs.weddingTypes).toEqual(["traditional", "white"]);
-    expect(() => encodeInputs(saved.guide.inputs)).not.toThrow();
+    expect(saved.inputs.weddingTypes).toEqual(["traditional", "white"]);
+    expect(() => encodeInputs(saved.inputs)).not.toThrow();
+  });
+
+  it("updates instead of duplicating when the same inputs are saved again", async () => {
+    const { saveGuide, listSavedGuides } = await loadWith(storage);
+    const first = saveGuide("First name", INPUTS);
+    saveGuide("Other", { ...INPUTS, coordination: "same" });
+    const again = saveGuide("Renamed", INPUTS);
+
+    const list = listSavedGuides();
+    expect(list).toHaveLength(2);
+    expect(again.id).toBe(first.id);
+    expect(list[0].name).toBe("Renamed");
   });
 });

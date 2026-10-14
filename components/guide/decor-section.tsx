@@ -21,7 +21,9 @@ export function DecorSection({
     <article className="border border-black bg-white">
       <header className="flex items-baseline justify-between border-b border-black px-6 py-4">
         <span className="font-mono text-sm text-neutral-500">{number}</span>
-        <h2 className="text-xs uppercase tracking-[0.25em]">Decor</h2>
+        <h2 id="decor" className="text-xs uppercase tracking-[0.25em]">
+          Decor
+        </h2>
       </header>
 
       {/* Colour roles */}

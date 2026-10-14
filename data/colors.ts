@@ -276,9 +276,3 @@ export const COLORS: Color[] = [
     category: "accent",
   },
 ];
-
-export const COLOR_BY_ID = new Map(COLORS.map((c) => [c.id, c]));
-
-export function getColor(id: string): Color | undefined {
-  return COLOR_BY_ID.get(id);
-}

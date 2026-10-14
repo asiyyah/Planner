@@ -14,7 +14,19 @@ import {
  * nothing assigned to the couple (or an earlier group) can appear here.
  */
 
-function partyNotes(primary: Color, secondary: Color | undefined, same: boolean): string {
+/**
+ * Metallic for party accessories — the palette accent unless the couple has
+ * claimed it, in which case a generic metallic keeps their colour exclusive.
+ */
+function partyMetal(ctx: StylingContext, ledger: ColourLedger): string {
+  const accent = ctx.palette.accent;
+  return accent && !ledger.isTaken(accent.hex) ? accent.name : "Metallic";
+}
+
+function partyNotes(primary: Color | undefined, secondary: Color | undefined, same: boolean): string {
+  if (!primary) {
+    return "A direction derived from your palette, distinct from the couple.";
+  }
   if (same) {
     return `${primary.name} shared across the wedding party keeps everyone connected — proportion and fabric may vary between groups.`;
   }
@@ -36,9 +48,9 @@ export function buildParty(
     outfits: selectOutfits("female", "bridesmaids", ctx.weddingTypes, ctx.styles),
     fabrics: selectFabrics("bridesmaids", ctx.weddingTypes, ctx.styles),
     accessories: [
-      `${ctx.palette.accent?.name ?? "metallic"} details with a subtle touch of ${ctx.palette.neutral.name.toLowerCase()}`,
+      `${partyMetal(ctx, ledger)} details${bridesmaidColours[1] ? ` with a subtle touch of ${bridesmaidColours[1].name.toLowerCase()}` : ""}`,
     ],
-    notes: partyNotes(bridesmaidColours[0], bridesmaidColours[1], false),
+    notes: partyNotes(bridesmaidColours[0], bridesmaidColours[1], same),
   };
 
   // Same-mode shares the bridesmaid primary; different-mode generates its own
@@ -54,7 +66,7 @@ export function buildParty(
     outfits: selectOutfits("male", "groomsmen", ctx.weddingTypes, ctx.styles),
     fabrics: selectFabrics("groomsmen", ctx.weddingTypes, ctx.styles),
     accessories: [
-      `${ctx.palette.accent?.name ?? ctx.palette.neutral.name} could appear in pocket squares or caps`,
+      `${partyMetal(ctx, ledger)} details could appear in pocket squares or caps`,
     ],
     notes: same
       ? `The shared ${bridesmaidColours[0]?.name ?? "party"} colour continues here — a different outfit cut keeps the two groups from looking identical.`

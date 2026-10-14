@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { encodeInputs } from "@/lib/state";
+import { guideTitle } from "@/lib/guide-title";
+import { rememberLastGuide } from "@/lib/last-guide";
 import { saveGuide } from "@/lib/storage";
 import type { StyleGuide } from "@/types";
 import {
@@ -18,31 +22,45 @@ import { Label } from "@/components/ui/label";
 /** Save / Share / Download actions (PRD §34-9). */
 export function GuideActions({ guide }: { guide: StyleGuide }) {
   const [saved, setSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [name, setName] = useState(defaultName(guide));
+  const [shareStatus, setShareStatus] = useState<"idle" | "copied" | "failed">(
+    "idle"
+  );
+  const [name, setName] = useState(guideTitle(guide));
   const [open, setOpen] = useState(false);
 
-  const shareUrl =
-    typeof window === "undefined"
-      ? ""
-      : `${window.location.origin}/guide?d=${encodeURIComponent(
-          window.location.search.startsWith("?d=")
-            ? window.location.search.slice(3)
-            : ""
-        )}`;
+  const encoded = encodeInputs(guide.inputs);
+
+  useEffect(() => {
+    rememberLastGuide(encoded);
+  }, [encoded]);
+
+  function flashShareStatus(status: "copied" | "failed") {
+    setShareStatus(status);
+    setTimeout(() => setShareStatus("idle"), 2500);
+  }
 
   async function handleShare() {
+    // Built from the guide's own inputs, never from the current URL.
+    const url = `${window.location.origin}/guide?d=${encoded}`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: guideTitle(guide), url });
+        return;
+      } catch (error) {
+        // The user closed the share sheet — not a failure.
+        if (error instanceof DOMException && error.name === "AbortError") return;
+      }
+    }
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(url);
+      flashShareStatus("copied");
     } catch {
-      // Clipboard unavailable (e.g. insecure context) — no-op.
+      flashShareStatus("failed");
     }
   }
 
   function handleSave() {
-    saveGuide(name.trim() || defaultName(guide), guide);
+    saveGuide(name.trim() || guideTitle(guide), guide.inputs);
     setSaved(true);
     setOpen(false);
     setTimeout(() => setSaved(false), 2000);
@@ -91,10 +109,15 @@ export function GuideActions({ guide }: { guide: StyleGuide }) {
 
       <button
         type="button"
+        aria-live="polite"
         onClick={handleShare}
         className="border border-black px-5 py-2.5 text-xs uppercase tracking-widest transition-colors hover:bg-black hover:text-white"
       >
-        {copied ? "Link copied ✓" : "Share link"}
+        {shareStatus === "copied"
+          ? "Link copied ✓"
+          : shareStatus === "failed"
+            ? "Copy failed — use the address bar"
+            : "Share link"}
       </button>
 
       <button
@@ -102,14 +125,15 @@ export function GuideActions({ guide }: { guide: StyleGuide }) {
         onClick={() => window.print()}
         className="border border-black px-5 py-2.5 text-xs uppercase tracking-widest transition-colors hover:bg-black hover:text-white"
       >
-        Download PDF
+        Print / Save PDF
       </button>
+
+      <Link
+        href={`/plan?d=${encoded}`}
+        className="px-3 py-2.5 text-xs uppercase tracking-widest underline-offset-4 hover:underline"
+      >
+        Edit
+      </Link>
     </div>
   );
-}
-
-function defaultName(guide: StyleGuide): string {
-  const c1 = guide.palette.hero.name;
-  const c2 = guide.palette.secondary.name;
-  return `${c1} × ${c2}`;
 }

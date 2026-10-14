@@ -1,20 +1,19 @@
 import type { Color, CoupleGuide, CoupleLook } from "@/types";
 import {
   hexToHsl,
-  hslToHex,
   hueDistance,
   normalizeHue,
   type Hsl,
 } from "@/lib/color/conversion";
 import { adjustForWedding } from "@/lib/color/wedding-adjustments";
 import {
-  classifyColor,
   colorToHsl,
-  describeColor,
   isAchromatic,
   isNearDuplicate,
   isWarm,
+  makeGeneratedColor,
 } from "@/lib/color/palette";
+import { TRADITIONAL_TYPES } from "@/lib/constants";
 import { rankFabrics, rankOutfits } from "./catalog";
 import type { StylingContext } from "./context";
 
@@ -36,22 +35,6 @@ export type CoupleBuild = {
   /** Every colour worn by either look — exclusive to the couple. */
   assignedHexes: string[];
 };
-
-const TRADITIONAL_TYPES = ["traditional", "traditional-white"] as const;
-
-function derivedColor(hsl: Hsl, kind: string): Color {
-  const adjusted = adjustForWedding(hsl);
-  const hex = hslToHex(adjusted);
-  return {
-    id: `gen-${kind}-${hex.slice(1).toLowerCase()}`,
-    name: describeColor(hex),
-    hex,
-    hue: adjusted.h,
-    saturation: adjusted.s,
-    lightness: adjusted.l,
-    category: classifyColor(adjusted),
-  };
-}
 
 /** First pool colour meaningfully distinct from `base`'s hue. */
 function pickDistinctHue(
@@ -82,10 +65,10 @@ function deriveLookTwoPrimary(hero: Color, usedHexes: string[]): Color {
       !usedHexes.some((hex) => isNearDuplicate(hexToHsl(hex), shaped)) &&
       hueDistance(shaped.h, hero.hue) > 0
     ) {
-      return derivedColor(shaped, "couple-look2");
+      return makeGeneratedColor(shaped, "couple-look2");
     }
   }
-  return derivedColor({ ...base, l: base.l >= 50 ? 28 : 74 }, "couple-look2");
+  return makeGeneratedColor({ ...base, l: base.l >= 50 ? 28 : 74 }, "couple-look2");
 }
 
 /** Allocate disjoint outfit/fabric names across the two looks. */
@@ -97,12 +80,8 @@ function allocateRankings(
   lookTwo: { outfits: string[]; fabrics: string[] };
 } {
   const biasFor = (preference: "traditional" | "contemporary") => {
-    const tradType = ctx.weddingTypes.find((t) =>
-      TRADITIONAL_TYPES.includes(t as (typeof TRADITIONAL_TYPES)[number])
-    );
-    const westernType = ctx.weddingTypes.find(
-      (t) => !TRADITIONAL_TYPES.includes(t as (typeof TRADITIONAL_TYPES)[number])
-    );
+    const tradType = ctx.weddingTypes.find((t) => TRADITIONAL_TYPES.includes(t));
+    const westernType = ctx.weddingTypes.find((t) => !TRADITIONAL_TYPES.includes(t));
     if (preference === "traditional") return tradType ?? westernType;
     return westernType ?? tradType;
   };
@@ -137,17 +116,13 @@ function allocateRankings(
   }
 
   // Fabrics follow the same bias split with no repeats.
-  const takenFabrics = new Set<string>();
   const fabricsOne = rankFabrics("couple", ctx.weddingTypes, ctx.styles, {
     biasType: biasFor(primaryBias),
-  })
-    .filter((name) => !takenFabrics.has(name))
-    .slice(0, 2);
-  fabricsOne.forEach((f) => takenFabrics.add(f));
+  }).slice(0, 2);
   const fabricsTwo = rankFabrics("couple", ctx.weddingTypes, ctx.styles, {
     biasType: biasFor(opposite),
   })
-    .filter((name) => !takenFabrics.has(name))
+    .filter((name) => !fabricsOne.includes(name))
     .slice(0, 2);
 
   return {
@@ -160,8 +135,7 @@ export function buildCouple(ctx: StylingContext): CoupleBuild {
   const { palette, styles } = ctx;
 
   const hero = palette.hero;
-  const lookOneCompanion =
-    palette.accent ?? palette.neutral ?? palette.supporting[0] ?? palette.secondary;
+  const lookOneCompanion = palette.accent ?? palette.neutral;
 
   const pool = [
     palette.secondary,
@@ -196,9 +170,8 @@ export function buildCouple(ctx: StylingContext): CoupleBuild {
     ]);
 
   const wantsTraditional =
-    ctx.weddingTypes.some((t) =>
-      TRADITIONAL_TYPES.includes(t as (typeof TRADITIONAL_TYPES)[number])
-    ) || styles.includes("traditional");
+    ctx.weddingTypes.some((t) => TRADITIONAL_TYPES.includes(t)) ||
+    styles.includes("traditional");
   const allocation = allocateRankings(ctx, wantsTraditional ? "traditional" : "contemporary");
 
   const mood = (primary: Color) =>

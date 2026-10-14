@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { encodeInputs } from "@/lib/state";
 import type {
   CoordinationMode,
+  PlannerInputs,
   WeddingStyleId,
   WeddingTypeId,
 } from "@/types";
@@ -15,13 +18,24 @@ import { WizardProgress } from "./wizard-bits";
 
 const TOTAL_STEPS = 4;
 
-export function PlanWizard() {
+export function PlanWizard({ initial }: { initial?: PlannerInputs | null }) {
+  const router = useRouter();
   const [step, setStep] = useState(0); // 0–3 inputs, 4 reveal
-  const [colors, setColors] = useState<string[]>([]);
-  const [weddingTypes, setWeddingTypes] = useState<WeddingTypeId[]>([]);
-  const [styles, setStyles] = useState<WeddingStyleId[]>([]);
-  const [coordination, setCoordination] =
-    useState<CoordinationMode>("different");
+  const [colors, setColors] = useState<string[]>(initial?.colors ?? []);
+  const [weddingTypes, setWeddingTypes] = useState<WeddingTypeId[]>(
+    initial?.weddingTypes ?? []
+  );
+  const [styles, setStyles] = useState<WeddingStyleId[]>(initial?.styles ?? []);
+  const [coordination, setCoordination] = useState<CoordinationMode>(
+    initial?.coordination ?? "different"
+  );
+
+  // Mirror a decodable draft into the URL so a refresh restores it.
+  useEffect(() => {
+    if (colors.length === 0 || weddingTypes.length === 0) return;
+    const encoded = encodeInputs({ colors, weddingTypes, styles, coordination });
+    window.history.replaceState(null, "", `/plan?d=${encoded}`);
+  }, [colors, weddingTypes, styles, coordination]);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
@@ -33,7 +47,7 @@ export function PlanWizard() {
               <ColourStep
                 colors={colors}
                 onChange={setColors}
-                onBack={() => history.back()}
+                onBack={() => router.push("/")}
                 onNext={() => setStep(1)}
               />
             )}

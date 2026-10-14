@@ -1,32 +1,12 @@
 import { generatePalette } from "@/lib/color/palette";
-import type {
-  CoordinationMode,
-  PlannerInputs,
-  StyleGuide,
-  WeddingTypeId,
-} from "@/types";
+import { normalizeHex } from "@/lib/color/conversion";
+import type { PlannerInputs, StyleGuide } from "@/types";
 import type { StylingContext } from "./context";
 import { buildCouple } from "./couple";
 import { ColourLedger } from "./group-colors";
 import { buildFamilies, buildParty } from "./groups";
 import { buildGuests } from "./guests";
 import { buildDecor } from "./decor";
-
-export const WEDDING_TYPE_IDS: WeddingTypeId[] = [
-  "traditional",
-  "white",
-  "traditional-white",
-  "civil",
-  "other",
-];
-
-export const COORDINATION_MODES: CoordinationMode[] = ["same", "different"];
-
-const HEX_PATTERN = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
-
-export function isValidHex(hex: string): boolean {
-  return HEX_PATTERN.test(hex);
-}
 
 /**
  * The full deterministic pipeline (PRD §42, iteration 02 §19):
@@ -40,7 +20,7 @@ export function generateStyleGuide(inputs: PlannerInputs): StyleGuide {
     throw new Error("At least one colour is required");
   }
   for (const hex of inputs.colors) {
-    if (!isValidHex(hex)) {
+    if (!hex.startsWith("#") || !normalizeHex(hex)) {
       throw new Error(`Invalid colour: ${hex}`);
     }
   }
@@ -72,7 +52,6 @@ export function generateStyleGuide(inputs: PlannerInputs): StyleGuide {
   const decor = buildDecor(ctx);
 
   return {
-    version: 2,
     inputs,
     palette,
     couple,

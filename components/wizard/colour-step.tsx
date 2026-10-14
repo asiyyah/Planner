@@ -1,6 +1,7 @@
 "use client";
 
-import { describeColor, MAX_COLORS } from "@/lib/color/palette";
+import { describeColor } from "@/lib/color/palette";
+import { MAX_COLORS } from "@/lib/constants";
 import { readableTextColor } from "@/lib/color/contrast";
 import { cn } from "@/lib/utils";
 import { ColorPickerPopover } from "@/components/swatch/color-picker-popover";

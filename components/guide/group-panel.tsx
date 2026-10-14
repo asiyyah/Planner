@@ -1,5 +1,5 @@
 import type { StylingRecommendation } from "@/types";
-import { readableTextColor } from "@/lib/color/contrast";
+import { ColorCard } from "@/components/swatch/color-card";
 
 /**
  * Editorial lookbook panel for one wedding group (PRD §24, §28).
@@ -24,21 +24,7 @@ export function GroupPanel({
         {/* Colour row */}
         <div className="grid grid-cols-2 gap-2">
           {recommendation.colors.map((color) => (
-            <div
-              key={`${color.name}-${color.hex}`}
-              className="swatch-frame p-3"
-              style={{
-                backgroundColor: color.hex,
-                color: readableTextColor(color.hex),
-              }}
-            >
-              <p className="text-[10px] uppercase tracking-widest opacity-70">
-                Colour
-              </p>
-              <p className="mt-1 text-sm font-medium leading-tight">
-                {color.name}
-              </p>
-            </div>
+            <ColorCard key={color.hex} color={color} />
           ))}
         </div>
 

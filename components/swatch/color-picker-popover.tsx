@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { hexToRgb, rgbToHex } from "@/lib/color/conversion";
+import { hexToRgb, normalizeHex, rgbToHex } from "@/lib/color/conversion";
 
 /**
  * Design-tool colour picker (iteration 01.1).
@@ -44,8 +44,7 @@ async function pickFromScreen(setHex: (hex: string) => void) {
 }
 
 function seedHex(initialHex: string | null | undefined): string {
-  const value = initialHex?.trim().toUpperCase() ?? "";
-  return /^#([0-9A-F]{3}|[0-9A-F]{6})$/.test(value) ? value : "#FFFFFF";
+  return (initialHex && normalizeHex(initialHex)) || "#FFFFFF";
 }
 
 type PickerPanelProps = {

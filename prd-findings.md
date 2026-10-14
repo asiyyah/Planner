@@ -3,7 +3,8 @@
 > Findings from auditing the codebase against the product flows (Flows A–C) and `prd.md` v1.0.
 > **Scope:** what is built, what is not, deliberate divergences, and recommended updates.
 > `prd.md` remains untouched as the authoritative v1.0 specification; section references (§) point there.
-> **Date:** August 2026 · **Codebase state:** post iteration 01 + 01.1
+> **Date:** August 2026, refreshed October 2026 after the codebase audit · **Codebase state:** post iteration 02 + audit fixes
+> Decisions that diverge from the PRD are recorded in `docs/decisions.md`.
 
 ---
 
@@ -16,11 +17,11 @@
 | Colour engine (`lib/color/*`) | Done, exceeds PRD §12 — 7 harmony modes, multi-anchor detection, wedding-tone muting |
 | Styling engine (`lib/styling/*`) | Done per §42 — couple, party, families, guests, decor from one shared `StylingContext` |
 | Style guide view (`/guide`) | Done per §24 — cover, 01 Colour Story, 02–06 group panels, 07 Guests, 08 Decor |
-| Save / Share / Export | Done for MVP — localStorage saves, shareable URL codec, print-to-PDF (§34-8/9) |
+| Save / Share / Export | Done for MVP — localStorage saves (inputs only), shareable URL codec with per-guide link previews, Web Share API, print-to-PDF (§34-8/9) |
 | Saved dashboard (`/saved`) | Done — device-local list with rename/delete/reopen |
 | Accounts / backend / auth | Not built — deliberate (§38–39 upheld) |
 | Theme input, venue context, party sizes | Not built — gaps G1–G4 below |
-| Test coverage | 72 tests across 6 files (conversion, harmony, palette, wedding adjustments, state codec, styling) — green; lint/tsc/build clean |
+| Test coverage | 112 tests across 8 files (conversion, harmony, palette, wedding adjustments, group colours, state codec, storage, styling) — green; lint/tsc/build clean |
 
 Stack in use: Next.js 16 · React 19 · TypeScript strict · Tailwind CSS v4 · shadcn-style Radix UI · Framer Motion · react-colorful · Vitest · no backend.
 
@@ -38,7 +39,7 @@ Step 3  Wedding style  classic…luxury, multi-select
 Step 4  Coordination   same colours / different-but-coordinated (default: different)
 Reveal                 choreographed palette animation (~5s, reduced-motion aware)
        ↓
-/guide?d=<codec-v2>    guide generated synchronously on load
+/guide?d=<codec-v3>    guide generated synchronously on load
 ```
 
 Implementation notes:
@@ -61,7 +62,7 @@ Implementation notes:
 | Lock a colour, regenerate the rest | **Implicit only** — anchors are inherently locked; regenerating means re-running the wizard or editing the URL. No in-guide affordance yet (gap G6) |
 | Restart a single role's suggestions | **Not built** (gap G6) |
 | Save to account | **Device-local only** — localStorage with rename/delete/reopen (§39 upheld; Supabase deferred) |
-| Export as shareable link | **Done** — compact URL codec v2 `hexes\|type\|styles\|coordination`; legacy v1 links still decode |
+| Export as shareable link | **Done** — compact URL codec v3 `hexes\|type+type\|styles\|coordination` (max 8 colours); v2 and legacy v1 links still decode |
 | Export as PDF lookbook | **Partial** — browser print pipeline with print-hidden chrome (Decision D6); no dedicated branded PDF |
 
 ### Flow C — Return visit
@@ -69,7 +70,7 @@ Implementation notes:
 | Brief item | Status |
 | --- | --- |
 | Login → dashboard | **Not applicable for MVP** — `/saved` acts as the dashboard, scoped to the device (§39) |
-| Open existing palette → edit or export | **Partial** — reopen and export work; there is **no path back into the wizard** to tweak a saved/shared palette (gap G5) |
+| Open existing palette → edit or export | **Done** — "Edit" on the guide and on saved entries reopens the wizard prefilled via `/plan?d=…` (G5 closed) |
 | Start a new palette (multi-event) | **Done** — start fresh any time; save each event under its own name locally |
 
 ---
@@ -94,7 +95,7 @@ Implementation notes:
 | G2 | Family/guest guidance toggle ("include guest/family sections?") | Flow A-4 | S | Pure UI gating of guide sections; styling engine already isolates groups |
 | G3 | Wedding party counts (bridesmaids/groomsmen numbers) | Flow A-4 | S | Influences copy (e.g. mixed dress styles for large parties); low engine impact |
 | G4 | Theme input — free text + preset tags ("rustic", "garden romance", …) | Flow A-1 | M | Deterministic keyword→style-weight mapping keeps the no-AI rule (§40); feeds existing styles pipeline |
-| G5 | Edit an existing palette (from saved entry or live guide back into wizard prefill) | Flow C-2 | S | High value, small cost: hydrate wizard state from codec/saved entry |
+| G5 | ~~Edit an existing palette~~ — **done** (wizard prefill from `?d=`) | Flow C-2 | S | Shipped in the October 2026 audit |
 | G6 | In-guide regeneration: explicit "lock my colours" + reshuffle per-role recommendations | Flow B-edit | M | `usedIds` mechanism in the styling engine already supports alternate picks without repeats |
 | G7 | Curated swatch strip alongside the picker | Flow A-2 | S | Reintroduce library browsing without reopening the colour-theory debate (see D2) |
 | G8 | Inspiration-image colour extraction | Flow A-2 | L | Client-side quantisation (median-cut/k-means) can satisfy this with zero AI APIs; schedule post-validation (Phase 3 of §52) |
@@ -106,7 +107,7 @@ Implementation notes:
 
 ## 5. Recommended iterations (priority order)
 
-1. **R1 — Edit & regenerate (G5, G6).** Prefill the wizard from a saved entry or the current URL; add "lock my colours" framing in the guide; allow reshuffling individual group recommendations. Directly serves completion-rate metric §50.
+1. **R1 — Regenerate (G6).** Add "lock my colours" framing in the guide; allow reshuffling individual group recommendations. (The edit half, G5, has shipped.) Directly serves completion-rate metric §50.
 2. **R2 — Context inputs (G1, G2, G3).** Venue/formality, include-families/guests toggle, party counts; codec v3 with legacy decode; fabric/decor tone selection keyed off venue+formality.
 3. **R3 — Theme tags (G4).** Preset tags + optional free text mapped onto style weights; no AI.
 4. **R4 — Curated swatch strip (G7).** Optional quick-pick row under the colour step.
@@ -117,6 +118,6 @@ Implementation notes:
 
 ## 6. Quality gates currently green
 
-* `npx vitest run` — 72/72 tests pass (colour conversion, harmony maths, palette generation, wedding adjustments, URL codec incl. legacy decode, styling engine).
+* `npx vitest run` — 112/112 tests pass (colour conversion, harmony maths, palette generation, wedding adjustments, group colours, URL codec incl. legacy decode, storage migration, styling engine).
 * `npm run lint`, `npx tsc --noEmit`, `npm run build` — clean.
-* Golden-path smoke test: Coffee × Sage → complementary harmony → full guide renders; share link round-trips through the codec.
+* Golden-path smoke test: Coffee × Sage → analogous harmony → full guide renders; share link round-trips through the codec.

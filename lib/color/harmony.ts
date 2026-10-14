@@ -135,17 +135,6 @@ export function generateHarmony(
 
 /* ------------------------- Multi-anchor classification ------------------------ */
 
-/** Signed shortest rotation between two hues (-180–180). */
-function signedDelta(a: number, b: number): number {
-  const d = normalizeHue(b - a);
-  return d > 180 ? d - 360 : d;
-}
-
-/** Midpoint of two hues on the colour wheel (wrap-safe). */
-export function hueMidpoint(a: number, b: number): number {
-  return normalizeHue(a + signedDelta(a, b) / 2);
-}
-
 /**
  * Classify the relationship between two hues (or one hue alone) into a
  * harmony mode. Used when users pick multiple anchor colours.
@@ -158,7 +147,6 @@ export function classifyPair(
     return null; // effectively monochromatic anchors
   }
   const d = hueDistance(hue1, hue2);
-  if (d <= 40) return "analogous";
   if (d <= 80) return "analogous";
   if (d <= 135) return "triadic";
   if (d <= 165) return "split-complementary";
@@ -197,8 +185,11 @@ export function classifyAnchors(anchors: Hsl[]): HarmonyName {
   // A wrap-around gap close to 360 means all hues cluster on one side.
   const maxGap = Math.max(...gaps);
   if (maxGap >= 200) {
-    // Anchors live in one arc: fall back to pair-style reading.
-    return classifyPair(first.h, sorted[1]) ?? DEFAULT_HARMONY;
+    // Anchors live in one arc: read the arc's two endpoints as a pair.
+    const gapIndex = gaps.indexOf(maxGap);
+    const arcStart = sorted[(gapIndex + 1) % sorted.length];
+    const arcEnd = sorted[gapIndex];
+    return classifyPair(arcStart, arcEnd) ?? DEFAULT_HARMONY;
   }
 
   const meanGap = gaps.reduce((sum, g) => sum + g, 0) / gaps.length;

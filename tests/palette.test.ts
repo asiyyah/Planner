@@ -5,9 +5,9 @@ import {
   describeColor,
   generatePalette,
   isAchromatic,
-  isValidHexValue,
-  MAX_COLORS,
 } from "@/lib/color/palette";
+import { normalizeHex } from "@/lib/color/conversion";
+import { MAX_COLORS } from "@/lib/constants";
 import { isWeddingFriendly } from "@/lib/color/wedding-adjustments";
 import type { Color } from "@/types";
 
@@ -173,10 +173,10 @@ describe("generatePalette — many colours (no fixed limit)", () => {
 
 describe("input hygiene", () => {
   it("validates hex input strictly", () => {
-    expect(isValidHexValue("#5C4033")).toBe(true);
-    expect(isValidHexValue("#abc")).toBe(true);
-    expect(isValidHexValue("fff")).toBe(false); // bare values need normalize
-    expect(isValidHexValue("not-a-colour")).toBe(false);
+    expect(normalizeHex("#5C4033")).toBe("#5C4033");
+    expect(normalizeHex("#abc")).toBe("#AABBCC");
+    expect(normalizeHex("fff")).toBe("#FFFFFF");
+    expect(normalizeHex("not-a-colour")).toBeNull();
     expect(() => generatePalette([])).toThrow();
     expect(() => generatePalette(["zzzzzz"])).toThrow();
   });

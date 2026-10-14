@@ -2,14 +2,16 @@ import type {
   CoordinationMode,
   PlannerInputs,
   SavedGuide,
-  StyleGuide,
   WeddingStyleId,
   WeddingTypeId,
 } from "@/types";
-import { normalizeHex } from "@/lib/state";
-import { WEDDING_TYPE_IDS } from "@/lib/styling";
+import { normalizeHex } from "@/lib/color/conversion";
+import { isStyleId, isWeddingTypeId, MAX_COLORS } from "@/lib/constants";
+import { encodeInputs } from "@/lib/state";
 
 const STORAGE_KEY = "wp.saved-guides";
+/** Unparseable payloads are copied here before being replaced, never lost. */
+export const CORRUPT_BACKUP_KEY = `${STORAGE_KEY}.corrupt`;
 
 const EMPTY: SavedGuide[] = [];
 
@@ -42,7 +44,7 @@ function normalizeColors(inputs: UnknownRecord): string[] {
     const hex = normalizeHex(value);
     if (hex && !colors.includes(hex)) colors.push(hex);
   }
-  return colors;
+  return colors.slice(0, MAX_COLORS);
 }
 
 /**
@@ -54,90 +56,116 @@ function normalizeWeddingTypes(inputs: UnknownRecord): WeddingTypeId[] {
   const raw = Array.isArray(inputs.weddingTypes)
     ? inputs.weddingTypes
     : [inputs.weddingType];
-  const types = raw.filter(
-    (t): t is WeddingTypeId =>
-      typeof t === "string" && WEDDING_TYPE_IDS.includes(t as WeddingTypeId)
-  );
+  const types = raw.filter(isWeddingTypeId);
   return types.length > 0 ? [...new Set(types)] : ["white"];
 }
 
 function normalizeStyles(inputs: UnknownRecord): WeddingStyleId[] {
   if (!Array.isArray(inputs.styles)) return [];
-  return [
-    ...new Set(
-      inputs.styles.filter((s): s is WeddingStyleId => typeof s === "string")
-    ),
-  ];
+  return [...new Set(inputs.styles.filter(isStyleId))];
 }
 
-/**
- * The saved page renders swatches straight from the stored palette; an
- * entry missing any required role cannot be displayed or reopened.
- */
-function hasUsablePalette(palette: UnknownRecord): boolean {
-  return (
-    isRecord(palette.hero) &&
-    isRecord(palette.secondary) &&
-    isRecord(palette.neutral) &&
-    Array.isArray(palette.supporting)
-  );
-}
-
-/**
- * Saved guides may come from any earlier iteration:
- *   v0 — { color1, color2, weddingType, … }   (fixed colour slots)
- *   v1 — { colors, weddingType, … }           (dynamic colours)
- *   v2+ — { colors, weddingTypes, … }         (multi-select types)
- *
- * Normalizes every entry to the current PlannerInputs shape. Returns null
- * for entries that cannot be recovered (no valid colours, broken palette);
- * readCache filters those out instead of crashing consumers like the
- * saved page's encodeInputs call.
- */
-function migrateEntry(entry: unknown): SavedGuide | null {
-  if (!isRecord(entry) || !isRecord(entry.guide)) return null;
-  const guide = entry.guide;
-  if (!isRecord(guide.inputs) || !isRecord(guide.palette)) return null;
-  if (!hasUsablePalette(guide.palette)) return null;
-
-  const inputs = guide.inputs;
+function normalizeInputs(inputs: UnknownRecord): PlannerInputs | null {
   const colors = normalizeColors(inputs);
   if (colors.length === 0) return null;
-
   const coordination: CoordinationMode =
     inputs.coordination === "same" ? "same" : "different";
-
-  guide.inputs = {
+  return {
     colors,
     weddingTypes: normalizeWeddingTypes(inputs),
     styles: normalizeStyles(inputs),
     coordination,
-  } satisfies PlannerInputs;
+  };
+}
 
-  return entry as SavedGuide;
+/**
+ * Saved entries hold only the planner inputs — the engine is deterministic,
+ * so the guide (and its preview palette) is regenerated on read.
+ *
+ * Entries may come from any earlier iteration:
+ *   current — { id, name, savedAt, inputs }
+ *   legacy  — { id, name, savedAt, guide: { inputs, palette, … } } where
+ *             inputs were { color1, color2, weddingType } (v0),
+ *             { colors, weddingType } (v1) or { colors, weddingTypes } (v2)
+ *
+ * Returns null for entries that cannot be recovered (no valid colours).
+ */
+function migrateEntry(entry: unknown): SavedGuide | null {
+  if (!isRecord(entry)) return null;
+  const rawInputs = isRecord(entry.inputs)
+    ? entry.inputs
+    : isRecord(entry.guide) && isRecord(entry.guide.inputs)
+      ? entry.guide.inputs
+      : null;
+  if (!rawInputs) return null;
+
+  const inputs = normalizeInputs(rawInputs);
+  if (!inputs) return null;
+
+  return {
+    id: typeof entry.id === "string" ? entry.id : newId(),
+    name: typeof entry.name === "string" ? entry.name : "Untitled",
+    savedAt:
+      typeof entry.savedAt === "string" ? entry.savedAt : new Date(0).toISOString(),
+    inputs,
+  };
+}
+
+function backupCorrupt(raw: string): void {
+  try {
+    if (window.localStorage.getItem(CORRUPT_BACKUP_KEY) === null) {
+      window.localStorage.setItem(CORRUPT_BACKUP_KEY, raw);
+    }
+  } catch {
+    // Storage unavailable — nothing more we can do.
+  }
 }
 
 function readCache(): SavedGuide[] {
   if (!isBrowser()) return EMPTY;
   if (cache) return cache;
+  let raw: string | null = null;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    cache = Array.isArray(parsed)
-      ? parsed
-          .map(migrateEntry)
-          .filter((entry): entry is SavedGuide => entry !== null)
-      : EMPTY;
+    raw = window.localStorage.getItem(STORAGE_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (Array.isArray(parsed)) {
+      cache = parsed
+        .map(migrateEntry)
+        .filter((entry): entry is SavedGuide => entry !== null);
+    } else {
+      if (raw) backupCorrupt(raw);
+      cache = EMPTY;
+    }
   } catch {
+    if (raw) backupCorrupt(raw);
     cache = EMPTY;
   }
   return cache;
 }
 
+function notify(): void {
+  listeners.forEach((listener) => listener());
+}
+
+/** Another tab changed the saved list — drop the cache and re-read. */
+function handleStorageEvent(event: StorageEvent): void {
+  if (event.key !== STORAGE_KEY && event.key !== null) return;
+  cache = null;
+  notify();
+}
+
 /** Stable snapshot + subscription so components can useSyncExternalStore. */
 export function subscribeGuides(listener: () => void): () => void {
+  if (listeners.size === 0 && isBrowser() && "addEventListener" in window) {
+    window.addEventListener("storage", handleStorageEvent);
+  }
   listeners.add(listener);
-  return () => listeners.delete(listener);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0 && isBrowser() && "removeEventListener" in window) {
+      window.removeEventListener("storage", handleStorageEvent);
+    }
+  };
 }
 
 export function getServerGuides(): SavedGuide[] {
@@ -151,19 +179,30 @@ function commit(next: SavedGuide[]): void {
   } catch {
     // Storage full or unavailable — keep the in-memory view working.
   }
-  listeners.forEach((listener) => listener());
+  notify();
+}
+
+function newId(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 /* --------------------------------- Actions --------------------------------- */
 
-export function saveGuide(name: string, guide: StyleGuide): SavedGuide {
+/**
+ * Save a guide by its inputs. Saving inputs that already exist renames and
+ * re-dates that entry (moving it to the top) instead of adding a duplicate.
+ */
+export function saveGuide(name: string, inputs: PlannerInputs): SavedGuide {
+  const key = encodeInputs(inputs);
+  const current = readCache();
+  const existing = current.find((entry) => encodeInputs(entry.inputs) === key);
   const entry: SavedGuide = {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id: existing?.id ?? newId(),
     name,
     savedAt: new Date().toISOString(),
-    guide,
+    inputs,
   };
-  commit([entry, ...readCache()]);
+  commit([entry, ...current.filter((e) => e.id !== entry.id)]);
   return entry;
 }
 

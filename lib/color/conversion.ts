@@ -1,6 +1,22 @@
-import type { Color } from "@/types";
-
 export type Hsl = { h: number; s: number; l: number };
+
+const HEX_RE = /^([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/;
+
+/**
+ * Canonical `#RRGGBB` form of a user/URL hex value (with or without `#`,
+ * 3 or 6 digits), or null when it is not a solid hex colour.
+ */
+export function normalizeHex(value: string): string | null {
+  const trimmed = value.trim().replace(/^#/, "");
+  if (!HEX_RE.test(trimmed)) return null;
+  const upper = trimmed.toUpperCase();
+  return upper.length === 3
+    ? `#${upper
+        .split("")
+        .map((ch) => ch + ch)
+        .join("")}`
+    : `#${upper}`;
+}
 
 /** Normalise a hue into [0, 360). */
 export function normalizeHue(hue: number): number {
@@ -91,23 +107,5 @@ export function hexToHsl(hex: string): Hsl {
     h: Math.round(h * 10) / 10,
     s: Math.round(s * 1000) / 10,
     l: Math.round(l * 1000) / 10,
-  };
-}
-
-/** Build a library-style Color from raw HSL values. */
-export function makeColor(
-  id: string,
-  name: string,
-  hsl: Hsl,
-  category: Color["category"]
-): Color {
-  return {
-    id,
-    name,
-    hex: hslToHex(hsl),
-    hue: Math.round(normalizeHue(hsl.h) * 10) / 10,
-    saturation: Math.round(hsl.s * 10) / 10,
-    lightness: Math.round(hsl.l * 10) / 10,
-    category,
   };
 }

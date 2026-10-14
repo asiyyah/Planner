@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wedding Planner
 
-## Getting Started
+A minimal, editorial wedding styling tool: pick one or more colours you love and get a coordinated
+style guide — palette, couple looks, wedding party, families, guest colour guide and decor direction.
 
-First, run the development server:
+Fully deterministic and local: no backend, no accounts, no AI APIs. See [`prd.md`](prd.md) for the
+product spec and [`docs/decisions.md`](docs/decisions.md) for where the build intentionally diverges.
+
+## Scripts
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev     # local dev server
+npm run build   # production build
+npm start       # serve the production build
+npm run lint    # ESLint
+npm test        # Vitest unit tests
+npx tsc --noEmit
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## How it works
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+/            landing
+/plan        wizard: colours (1–8) → wedding types → styles → coordination → reveal
+             (?d=<payload> prefills it — used by "Edit" and to survive refresh)
+/guide?d=…   server-rendered style guide, regenerated from the URL payload
+/saved       guides saved on this device (localStorage, inputs only)
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **`lib/color/`** — colour engine: conversion, harmony maths, palette roles, wedding-tone muting,
+  contrast.
+- **`lib/styling/`** — styling engine. The couple claims its colours first (`ColourLedger`); other
+  groups get freshly derived, exclusion-aware colours; decor reuses the master palette.
+- **`lib/state.ts`** — the `?d=` URL codec (`hex,hex|type+type|styles|coordination`), backward
+  compatible with older links.
+- **`lib/storage.ts`** — saved guides with legacy migration and corrupt-data backup.
+- **`lib/constants.ts`** — canonical option IDs shared by everything above.
+- **`data/`** — curated colours, fabrics, outfits, decor templates and option copy.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The app runs on Next.js 16 — APIs differ from older versions; check `node_modules/next/dist/docs/`
+before changing framework code (see `AGENTS.md`).

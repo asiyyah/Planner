@@ -5,6 +5,7 @@ import {
   hexToHsl,
   hslToHex,
   hueDistance,
+  normalizeHex,
   normalizeHue,
   type Hsl,
 } from "./conversion";
@@ -48,7 +49,7 @@ export function weightedDistance(a: Hsl, b: Hsl): number {
  * colours closer than this read as "the same colour, renamed" and must not
  * be given to another group when the couple owns one of them.
  */
-export const NEAR_DUPLICATE_DISTANCE = 0.2;
+const NEAR_DUPLICATE_DISTANCE = 0.2;
 
 /**
  * True when two colours are perceptually too alike to sit in different
@@ -73,22 +74,6 @@ export function isNearDuplicate(a: Hsl, b: Hsl): boolean {
 /** Convenience: hex-pair variant used by the exclusion checks. */
 export function hexesNearDuplicate(hexA: string, hexB: string): boolean {
   return isNearDuplicate(hexToHsl(hexA), hexToHsl(hexB));
-}
-
-/** Snap an HSL value to the nearest curated library colour. */
-export function snapToLibrary(hsl: Hsl, excludeIds: string[] = []): Color {
-  const excluded = new Set(excludeIds);
-  let best = COLORS[0];
-  let bestDist = Number.POSITIVE_INFINITY;
-  for (const color of COLORS) {
-    if (excluded.has(color.id)) continue;
-    const d = weightedDistance(hsl, colorToHsl(color));
-    if (d < bestDist) {
-      bestDist = d;
-      best = color;
-    }
-  }
-  return best;
 }
 
 /** How far an arbitrary colour may sit from a library entry to borrow its name. */
@@ -121,23 +106,11 @@ export function isWarm(color: Color): boolean {
   return color.hue <= 70 || color.hue >= 330;
 }
 
-export function isValidHexValue(hex: string): boolean {
-  return /^#([0-9A-F]{3}|[0-9A-F]{6})$/.test(hex.trim().toUpperCase());
-}
-
-/** Normalise user hex input to canonical `#RRGGBB` form. */
-export function normalizeHexInput(hex: string): string {
-  let value = hex.trim().replace("#", "").toUpperCase();
-  if (value.length === 3) {
-    value = value
-      .split("")
-      .map((ch) => ch + ch)
-      .join("");
-  }
-  if (!/^[0-9A-F]{6}$/.test(value)) {
-    throw new Error(`Invalid colour: ${hex}`);
-  }
-  return `#${value}`;
+/** Canonical `#RRGGBB` form; throws on anything that is not a solid hex. */
+function requireHex(hex: string): string {
+  const normalized = normalizeHex(hex);
+  if (!normalized) throw new Error(`Invalid colour: ${hex}`);
+  return normalized;
 }
 
 /* --------------------------- Descriptive naming ---------------------------- */
@@ -199,7 +172,7 @@ export function classifyColor({ h, s, l }: Hsl): ColorCategory {
 
 /** A user-selected anchor — exact hex preserved, named via metadata. */
 export function makeAnchorColor(hex: string, index: number): Color {
-  const normalized = normalizeHexInput(hex);
+  const normalized = requireHex(hex);
   const hsl = hexToHsl(normalized);
   const near = nearestLibraryColor(hsl);
   return {
@@ -214,7 +187,7 @@ export function makeAnchorColor(hex: string, index: number): Color {
 }
 
 /** An engine-generated colour — always passed through the wedding filter. */
-function makeGeneratedColor(hsl: Hsl, kind: string): Color {
+export function makeGeneratedColor(hsl: Hsl, kind: string): Color {
   const adjusted = adjustForWedding(hsl);
   const hex = hslToHex(adjusted);
   return {
@@ -286,8 +259,8 @@ function pickAccent(
 /* --------------------------------- Explainer ------------------------------- */
 
 function toneWords(hero: Color): string {
-  const warmth = isWarm(hero) ? TONE_WORDS.warm[0] : TONE_WORDS.cool[0];
-  const depth = hero.lightness < 45 ? TONE_WORDS.deep[0] : TONE_WORDS.light[0];
+  const warmth = isWarm(hero) ? TONE_WORDS.warm : TONE_WORDS.cool;
+  const depth = hero.lightness < 45 ? TONE_WORDS.deep : TONE_WORDS.light;
   return `${depth}, ${warmth}`;
 }
 
@@ -316,9 +289,6 @@ function explain(palette: Omit<Palette, "explanation">): string {
 
 /* -------------------------------- Entry point ------------------------------ */
 
-/** Upper bound on selected colours per guide — generous, not a fixed slot count. */
-export const MAX_COLORS = 8;
-
 /**
  * Generate a wedding palette from one or more user-selected hex colours.
  *
@@ -335,7 +305,7 @@ export function generatePalette(colorInputs: string[]): Palette {
   // Dedupe while preserving input order (case-insensitive exact match).
   const seen = new Set<string>();
   const uniqueHexes = colorInputs
-    .map(normalizeHexInput)
+    .map(requireHex)
     .filter((hex) => {
       if (seen.has(hex)) return false;
       seen.add(hex);
@@ -379,6 +349,19 @@ export function generatePalette(colorInputs: string[]): Palette {
 
     usedHexes.add(color.hex);
     supporting.push(color);
+  }
+
+  // Anchors sharing one hue filter out every harmony candidate; fall back
+  // to depth variations of the base so the palette never runs thin.
+  if (supporting.length < wantedSupporting) {
+    for (const candidate of generateHarmony(baseHsl, "monochromatic")) {
+      if (supporting.length >= wantedSupporting) break;
+      const color = makeGeneratedColor(candidate, "support");
+      if (usedHexes.has(color.hex)) continue;
+      if (anchors.some((a) => isNearDuplicate(colorToHsl(a), candidate))) continue;
+      usedHexes.add(color.hex);
+      supporting.push(color);
+    }
   }
 
   // Secondary role: the next anchor when present, otherwise the first

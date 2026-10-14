@@ -55,8 +55,8 @@ export const HARMONIES: Record<HarmonyName, HarmonyMeta> = {
  * (PRD §13). Keyed by warmth and depth of the hero colour.
  */
 export const TONE_WORDS = {
-  warm: ["warm", "earthy", "sunlit"],
-  cool: ["cool", "serene", "crisp"],
-  deep: ["deep", "rich", "dramatic"],
-  light: ["soft", "airy", "delicate"],
+  warm: "warm",
+  cool: "cool",
+  deep: "deep",
+  light: "soft",
 } as const;

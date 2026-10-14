@@ -1,5 +1,11 @@
-import type { CoordinationMode, PlannerInputs, WeddingStyleId, WeddingTypeId } from "@/types";
-import { WEDDING_TYPE_IDS } from "@/lib/styling";
+import type { PlannerInputs, WeddingStyleId, WeddingTypeId } from "@/types";
+import { normalizeHex } from "@/lib/color/conversion";
+import {
+  isCoordinationMode,
+  isStyleId,
+  isWeddingTypeId,
+  MAX_COLORS,
+} from "@/lib/constants";
 
 /**
  * Compact URL codec so a generated style guide is fully shareable via
@@ -13,36 +19,10 @@ import { WEDDING_TYPE_IDS } from "@/lib/styling";
  * still decode.
  */
 
-const HEX_RE = /^([0-9A-Fa-f]{6}|[0-9A-Fa-f]{3})$/;
-
-const STYLE_IDS = new Set<WeddingStyleId>([
-  "classic",
-  "elegant",
-  "modern",
-  "romantic",
-  "traditional",
-  "minimal",
-  "bold",
-  "luxury",
-]);
-
-const COORD_OK = new Set<string>(["same", "different"]);
-
-export function normalizeHex(value: string): string | null {
-  const trimmed = value.trim().replace(/^#/, "");
-  if (!HEX_RE.test(trimmed)) return null;
-  const upper = trimmed.toUpperCase();
-  const expanded =
-    upper.length === 3
-      ? upper
-          .split("")
-          .map((ch) => ch + ch)
-          .join("")
-      : upper;
-  return `#${expanded}`;
-}
-
-/** Parse a comma-separated list of hexes; requires at least one valid colour. */
+/**
+ * Parse a comma-separated list of hexes; requires at least one valid colour.
+ * Extra colours beyond MAX_COLORS are dropped, matching what the wizard allows.
+ */
 function parseColorList(raw: string): string[] | null {
   const parts = raw.split(",").filter(Boolean);
   if (parts.length === 0) return null;
@@ -52,7 +32,7 @@ function parseColorList(raw: string): string[] | null {
     if (!normalized) return null;
     if (!colors.includes(normalized)) colors.push(normalized);
   }
-  return colors;
+  return colors.slice(0, MAX_COLORS);
 }
 
 function parseTail(
@@ -65,24 +45,18 @@ function parseTail(
   if (typeParts.length === 0) return null;
   const weddingTypes: WeddingTypeId[] = [];
   for (const part of typeParts) {
-    if (!WEDDING_TYPE_IDS.includes(part as WeddingTypeId)) return null;
-    if (!weddingTypes.includes(part as WeddingTypeId)) {
-      weddingTypes.push(part as WeddingTypeId);
-    }
+    if (!isWeddingTypeId(part)) return null;
+    if (!weddingTypes.includes(part)) weddingTypes.push(part);
   }
-  if (!COORD_OK.has(coordination)) return null;
+  if (!isCoordinationMode(coordination)) return null;
 
-  const styles = stylesRaw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .filter((s): s is WeddingStyleId => STYLE_IDS.has(s as WeddingStyleId));
+  const styles: WeddingStyleId[] = [];
+  for (const part of stylesRaw.split(",")) {
+    const style = part.trim();
+    if (isStyleId(style) && !styles.includes(style)) styles.push(style);
+  }
 
-  return {
-    weddingTypes,
-    styles,
-    coordination: coordination as CoordinationMode,
-  };
+  return { weddingTypes, styles, coordination };
 }
 
 export function encodeInputs(inputs: PlannerInputs): string {

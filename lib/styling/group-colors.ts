@@ -1,3 +1,4 @@
+import { COLORS } from "@/data/colors";
 import type { Color, Palette } from "@/types";
 import {
   hexToHsl,
@@ -7,11 +8,10 @@ import {
 } from "@/lib/color/conversion";
 import { adjustForWedding } from "@/lib/color/wedding-adjustments";
 import {
-  classifyColor,
   colorToHsl,
-  describeColor,
   isAchromatic,
   isNearDuplicate,
+  makeGeneratedColor,
 } from "@/lib/color/palette";
 
 /**
@@ -71,9 +71,24 @@ const DEPTH_RECIPES: Record<GroupProfile, DepthRecipe[]> = {
   guests: [
     { s: 22, l: 80 },
     { s: 32, l: 66 },
-    { s: 13, l: 89 },
+    { s: 14, l: 72 },
   ],
 };
+
+/**
+ * White and ivory are the bride's colours. No generated group colour may
+ * read as either, so guests are never steered toward wearing white.
+ */
+export const BRIDAL_WHITES: Color[] = COLORS.filter(
+  (c) => c.id === "white" || c.id === "ivory"
+);
+
+function isBridalWhite(candidate: Hsl): boolean {
+  return (
+    candidate.l >= 90 ||
+    BRIDAL_WHITES.some((c) => isNearDuplicate(candidate, colorToHsl(c)))
+  );
+}
 
 /**
  * Hue offsets explored around each palette seed. Early entries stay close to
@@ -89,20 +104,6 @@ const PROFILE_HUE_BIAS: Partial<Record<GroupProfile, number[]>> = {
 };
 
 /* ------------------------------ Colour building ---------------------------- */
-
-function toGroupColor(hsl: Hsl, profile: GroupProfile): Color {
-  const adjusted = adjustForWedding(hsl);
-  const hex = hslToHex(adjusted);
-  return {
-    id: `gen-${profile}-${hex.slice(1).toLowerCase()}`,
-    name: describeColor(hex),
-    hex,
-    hue: adjusted.h,
-    saturation: adjusted.s,
-    lightness: adjusted.l,
-    category: classifyColor(adjusted),
-  };
-}
 
 /** Chromatic palette entries become seeds; all-neutral palettes plan from stone. */
 function seedHues(palette: Palette): number[] {
@@ -158,6 +159,7 @@ export function generateGroupColours(
     const hex = hslToHex(candidate);
 
     if (accepted.some((c) => c.hex === hex)) return false;
+    if (isBridalWhite(candidate)) return false;
     if (ledger.isNearTaken(candidate)) return false;
     if (
       accepted.some((c) => isNearDuplicate(candidate, colorToHsl(c)))
@@ -165,7 +167,7 @@ export function generateGroupColours(
       return false;
     }
 
-    accepted.push(toGroupColor(candidate, profile));
+    accepted.push(makeGeneratedColor(candidate, profile));
     return true;
   };
 
@@ -195,10 +197,11 @@ export function generateGroupColours(
     const hex = hslToHex(candidate);
     if (
       !accepted.some((c) => c.hex === hex) &&
+      !isBridalWhite(candidate) &&
       !ledger.isNearTaken(candidate) &&
       !accepted.some((c) => isNearDuplicate(candidate, colorToHsl(c)))
     ) {
-      accepted.push(toGroupColor(candidate, profile));
+      accepted.push(makeGeneratedColor(candidate, profile));
     }
     widenStep += 1;
   }

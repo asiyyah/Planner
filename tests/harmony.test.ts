@@ -134,6 +134,18 @@ describe("anchor classification", () => {
     expect(classifyAnchors([])).toBe("analogous");
   });
 
+  it("reads anchors clustered in one arc by the arc's endpoints", () => {
+    // Input order puts the middle hue first; the arc spans 10° → 150° (140°).
+    // Comparing the first input hue with itself used to fall back to analogous.
+    expect(
+      classifyAnchors([
+        { h: 80, s: 40, l: 50 },
+        { h: 10, s: 40, l: 50 },
+        { h: 150, s: 40, l: 50 },
+      ])
+    ).toBe("split-complementary");
+  });
+
   it("classifies two anchors by wheel distance", () => {
     expect(classifyPair(20, 50)).toBe("analogous");
     expect(classifyPair(0, 110)).toBe("triadic");
