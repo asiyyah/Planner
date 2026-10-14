@@ -13,7 +13,7 @@
 | Area | State |
 | --- | --- |
 | Landing page (`/`) | Done — editorial hero, three-step explainer, "Start planning" CTAs |
-| Onboarding wizard (`/plan`) | Done — Colour → Wedding Type → Style → Coordination → animated Reveal |
+| Onboarding wizard (`/plan`) | Done — Colours (1st + optional 2nd) → Wedding Type → Style → Coordination → animated Reveal |
 | Colour engine (`lib/color/*`) | Done, exceeds PRD §12 — 7 harmony modes, multi-anchor detection, wedding-tone muting |
 | Styling engine (`lib/styling/*`) | Done per §42 — couple, party, families, guests, decor from one shared `StylingContext` |
 | Style guide view (`/guide`) | Done per §24 — cover, 01 Colour Story, 02–06 group panels, 07 Guests, 08 Decor |
@@ -21,7 +21,7 @@
 | Saved dashboard (`/saved`) | Done — device-local list with rename/delete/reopen |
 | Accounts / backend / auth | Not built — deliberate (§38–39 upheld) |
 | Theme input, venue context, party sizes | Not built — gaps G1–G4 below |
-| Test coverage | 112 tests across 8 files (conversion, harmony, palette, wedding adjustments, group colours, state codec, storage, styling) — green; lint/tsc/build clean |
+| Test coverage | 129 tests across 8 files (conversion, harmony, palette, wedding adjustments, group colours, state codec, storage, styling) — green; lint/tsc/build clean |
 
 Stack in use: Next.js 16 · React 19 · TypeScript strict · Tailwind CSS v4 · shadcn-style Radix UI · Framer Motion · react-colorful · Vitest · no backend.
 
@@ -33,7 +33,7 @@ Stack in use: Next.js 16 · React 19 · TypeScript strict · Tailwind CSS v4 · 
 
 ```text
 Landing (/) → "Start planning"
-Step 1  Colours        free-form picker, 1–8 colours (≥1 required)
+Step 1  Colours        free-form picker, a 1st colour and an optional 2nd
 Step 2  Wedding type   traditional / white / traditional+white / civil / other
 Step 3  Wedding style  classic…luxury, multi-select
 Step 4  Coordination   same colours / different-but-coordinated (default: different)
@@ -44,10 +44,10 @@ Reveal                 choreographed palette animation (~5s, reduced-motion awar
 
 Implementation notes:
 
-* **Colour step** supersedes PRD §8's fixed "Colour 01 / Colour 02". Users add up to 8 anchor colours (`MAX_COLORS = 8`); each anchor is preserved exactly in the output, never overwritten.
+* **Colour step** follows PRD §8: a 1st colour and an optional 2nd (`MAX_COLORS = 2`), any hex; each is preserved exactly in the output, never overwritten.
 * **Picker** is a Figma-style anchored popover (`react-colorful`): saturation/lightness field, hue slider, HEX + RGB entry, native eyedropper where supported. Draft state discards on dismiss; only "Done" commits. No curated swatches inside the picker (Decision D2), no alpha channel (Decision D4).
 * **Harmony is chosen by the engine, not the user** (Decision D1): complementary / analogous / triadic / split-complementary / tetradic / square / monochromatic selected automatically from the anchors' relationships; the guide explains the choice in plain language (§13 requirement met).
-* Generated colours pass through a wedding-tone adjustment layer so additions stay muted and occasion-appropriate.
+* Generated colours are shaped by the chosen styles (Bold richer, Minimal quieter) and then pass through a wedding-tone adjustment layer so they stay occasion-appropriate. The neutral and metallic are derived per palette, not fixed (see `docs/decisions.md`).
 * Palette generation is synchronous and instant (<500ms target of §49 met); the reveal is presentation only. "Streaming suggestions" from the brief is N/A (Decision D7).
 
 ### Flow B — Results / lookbook
@@ -59,8 +59,8 @@ Implementation notes:
 | Tabbed/scrollable cards + reference image | **Partial** — responsive editorial grid instead of tabs (fits §30 layout direction); reference images not built (Phase 4 of §52) |
 | Guest guidance | **Done** — panel 07 with Recommended / Optional / Avoid swatch groups plus avoid-notes (§19 met) |
 | Decor grouped by category, tied to palette | **Done** — one palette-derived base/primary/secondary/accent assignment across ceremony, reception, tablescape, stage, florals, lighting, cake, signage (§23 met) |
-| Lock a colour, regenerate the rest | **Implicit only** — anchors are inherently locked; regenerating means re-running the wizard or editing the URL. No in-guide affordance yet (gap G6) |
-| Restart a single role's suggestions | **Not built** (gap G6) |
+| Lock a colour, regenerate the rest | **Done** — picks are always locked; "Another option" on the palette regenerates everything added around them |
+| Restart a single role's suggestions | **Done** — "Another option" on the couple, bridesmaids, groomsmen, each family and guests; kept in the share link |
 | Save to account | **Device-local only** — localStorage with rename/delete/reopen (§39 upheld; Supabase deferred) |
 | Export as shareable link | **Done** — compact URL codec v3 `hexes\|type+type\|styles\|coordination` (max 8 colours); v2 and legacy v1 links still decode |
 | Export as PDF lookbook | **Partial** — browser print pipeline with print-hidden chrome (Decision D6); no dedicated branded PDF |
@@ -96,7 +96,7 @@ Implementation notes:
 | G3 | Wedding party counts (bridesmaids/groomsmen numbers) | Flow A-4 | S | Influences copy (e.g. mixed dress styles for large parties); low engine impact |
 | G4 | Theme input — free text + preset tags ("rustic", "garden romance", …) | Flow A-1 | M | Deterministic keyword→style-weight mapping keeps the no-AI rule (§40); feeds existing styles pipeline |
 | G5 | ~~Edit an existing palette~~ — **done** (wizard prefill from `?d=`) | Flow C-2 | S | Shipped in the October 2026 audit |
-| G6 | In-guide regeneration: explicit "lock my colours" + reshuffle per-role recommendations | Flow B-edit | M | `usedIds` mechanism in the styling engine already supports alternate picks without repeats |
+| G6 | ~~In-guide regeneration~~ — **done** ("Another option" per section, codec v4) | Flow B-edit | M | Shipped October 2026 |
 | G7 | Curated swatch strip alongside the picker | Flow A-2 | S | Reintroduce library browsing without reopening the colour-theory debate (see D2) |
 | G8 | Inspiration-image colour extraction | Flow A-2 | L | Client-side quantisation (median-cut/k-means) can satisfy this with zero AI APIs; schedule post-validation (Phase 3 of §52) |
 | G9 | Reference imagery on recommendation cards | Flow B | L | Needs licensed/curated assets; Phase 4 of §52 |
@@ -107,7 +107,7 @@ Implementation notes:
 
 ## 5. Recommended iterations (priority order)
 
-1. **R1 — Regenerate (G6).** Add "lock my colours" framing in the guide; allow reshuffling individual group recommendations. (The edit half, G5, has shipped.) Directly serves completion-rate metric §50.
+1. **R1 — Edit & regenerate (G5, G6)** — shipped.
 2. **R2 — Context inputs (G1, G2, G3).** Venue/formality, include-families/guests toggle, party counts; codec v3 with legacy decode; fabric/decor tone selection keyed off venue+formality.
 3. **R3 — Theme tags (G4).** Preset tags + optional free text mapped onto style weights; no AI.
 4. **R4 — Curated swatch strip (G7).** Optional quick-pick row under the colour step.
@@ -118,6 +118,6 @@ Implementation notes:
 
 ## 6. Quality gates currently green
 
-* `npx vitest run` — 112/112 tests pass (colour conversion, harmony maths, palette generation, wedding adjustments, group colours, URL codec incl. legacy decode, storage migration, styling engine).
+* `npx vitest run` — 129/129 tests pass (colour conversion, harmony maths, palette generation, wedding adjustments, group colours, URL codec incl. legacy decode, storage migration, styling engine).
 * `npm run lint`, `npx tsc --noEmit`, `npm run build` — clean.
 * Golden-path smoke test: Coffee × Sage → analogous harmony → full guide renders; share link round-trips through the codec.

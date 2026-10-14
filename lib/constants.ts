@@ -1,5 +1,6 @@
 import type {
   CoordinationMode,
+  VariantKey,
   WeddingStyleId,
   WeddingTypeId,
 } from "@/types";
@@ -40,8 +41,22 @@ export const COORDINATION_MODES: readonly CoordinationMode[] = [
   "different",
 ];
 
-/** Upper bound on selected colours per guide — generous, not a fixed slot count. */
-export const MAX_COLORS = 8;
+/** A 1st colour and an optional 2nd (PRD §8). */
+export const MAX_COLORS = 2;
+
+/** Reshuffle counters, in URL-codec order. Append only — order is part of links. */
+export const VARIANT_KEYS: readonly VariantKey[] = [
+  "palette",
+  "couple",
+  "bridesmaids",
+  "groomsmen",
+  "brideFamily",
+  "groomFamily",
+  "guests",
+];
+
+/** Highest reshuffle counter accepted from a URL or saved entry. */
+export const MAX_VARIANT = 999;
 
 export function isWeddingTypeId(value: unknown): value is WeddingTypeId {
   return WEDDING_TYPE_IDS.includes(value as WeddingTypeId);

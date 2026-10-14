@@ -11,11 +11,34 @@ surviving record of what they decided.
   anchor colours and explained in plain language (PRD §4, §13).
 - **D2 — No curated swatches inside the picker.** The 31-colour library is naming metadata; any
   picked hex gets a friendly name.
-- **D3 — 1–8 anchor colours** replace the PRD's fixed "Colour 01 / Colour 02" (§8). One colour is
-  still enough. URLs carrying more than 8 are truncated.
+- **D3 — A 1st colour and an optional 2nd** (PRD §8), any hex. One colour is enough — the engine
+  generates its partner. (An earlier iteration allowed up to 8; links carrying more than 2 now keep
+  the first two.)
 - **D4 — Solid colours only** (`#RRGGBB`, no alpha).
 - **Wedding types are multi-select** (e.g. Traditional and White as separate events), unlike the
   single choice in PRD §9.
+
+## Palette generation
+
+- **Nothing is fixed.** Every generated colour derives from the user's picks:
+  - *Supporting colours* come from harmony relationships with **both** picks, not just the first.
+  - *The neutral* is tinted from the lead colour (a cream, mist or stone carrying its hue), not
+    chosen from a list of library neutrals.
+  - *The metallic* is ranked from a wider set — gold, champagne gold, antique gold, bronze,
+    copper, rose gold, silver, platinum, pewter (`data/metallics.ts`) — by the palette's
+    temperature and the chosen styles.
+  - Generated colours never borrow metal names (a grey is "Cloud Grey", not "Silver").
+- **Style shapes colour.** Each style has a tone (`data/style-tones.ts`): Bold, Traditional and
+  Luxury are richer and deeper; Romantic and Minimal softer and airier; several styles blend. For
+  a single pick, the style also leads the harmony (rich styles start complementary).
+- **"Another option" everywhere.** Palette, couple, bridesmaids, groomsmen, each family and guests
+  can each be reshuffled. Counters live in the share link (codec v4), so a reshuffled guide is
+  shareable and saved as-is, and Back returns to the previous option. The user's picks never
+  change.
+- **Reshuffles ripple forward, not back.** Groups never repeat each other's or the couple's
+  colours, so reshuffling the couple (or the palette) recalculates the groups, and reshuffling a
+  group can shift a group later in line (party → families → guests) if it takes one of that
+  group's colours.
 
 ## Output
 

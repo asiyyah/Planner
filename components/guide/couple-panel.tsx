@@ -1,5 +1,6 @@
 import type { CoupleGuide, CoupleLook } from "@/types";
 import { ColorCard } from "@/components/swatch/color-card";
+import { ShuffleLink } from "./shuffle-link";
 
 /**
  * Editorial two-look couple section (iteration 02 §9–12): Look 01 and
@@ -10,15 +11,20 @@ import { ColorCard } from "@/components/swatch/color-card";
 export function CouplePanel({
   number,
   couple,
+  shuffleHref,
 }: {
   number: string;
   couple: CoupleGuide;
+  shuffleHref: string;
 }) {
   return (
     <article className="border border-black bg-white">
       <header className="flex items-baseline justify-between border-b border-black px-6 py-4">
         <span className="font-mono text-sm text-neutral-500">{number}</span>
-        <h2 className="text-xs uppercase tracking-[0.25em]">{couple.title}</h2>
+        <div className="flex items-baseline gap-4">
+          <ShuffleLink href={shuffleHref} section="the couple" />
+          <h2 className="text-xs uppercase tracking-[0.25em]">{couple.title}</h2>
+        </div>
       </header>
 
       <div className="grid gap-px bg-neutral-200 md:grid-cols-2">

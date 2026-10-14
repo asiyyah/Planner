@@ -1,5 +1,6 @@
 import type { GuestGuide } from "@/types";
 import { readableTextColor } from "@/lib/color/contrast";
+import { ShuffleLink } from "./shuffle-link";
 
 function SwatchChip({
   name,
@@ -23,17 +24,22 @@ function SwatchChip({
 export function GuestsPanel({
   number,
   guests,
+  shuffleHref,
 }: {
   number: string;
   guests: GuestGuide;
+  shuffleHref: string;
 }) {
   return (
     <article className="border border-black bg-white">
       <header className="flex items-baseline justify-between border-b border-black px-6 py-4">
         <span className="font-mono text-sm text-neutral-500">{number}</span>
-        <h2 id="guests" className="text-xs uppercase tracking-[0.25em]">
-          Guests
-        </h2>
+        <div className="flex items-baseline gap-4">
+          <ShuffleLink href={shuffleHref} section="guests" />
+          <h2 id="guests" className="text-xs uppercase tracking-[0.25em]">
+            Guests
+          </h2>
+        </div>
       </header>
 
       <div className="grid gap-8 p-6 md:grid-cols-3">

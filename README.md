@@ -1,7 +1,7 @@
 # Wedding Planner
 
-A minimal, editorial wedding styling tool: pick one or more colours you love and get a coordinated
-style guide — palette, couple looks, wedding party, families, guest colour guide and decor direction.
+A minimal, editorial wedding styling tool: pick one or two colours you love (anything) and get a
+coordinated style guide — palette, couple looks, wedding party, families, guest colour guide and decor direction.
 
 Fully deterministic and local: no backend, no accounts, no AI APIs. See [`prd.md`](prd.md) for the
 product spec and [`docs/decisions.md`](docs/decisions.md) for where the build intentionally diverges.
@@ -21,9 +21,10 @@ npx tsc --noEmit
 
 ```text
 /            landing
-/plan        wizard: colours (1–8) → wedding types → styles → coordination → reveal
+/plan        wizard: colours (1–2) → wedding types → styles → coordination → reveal
              (?d=<payload> prefills it — used by "Edit" and to survive refresh)
-/guide?d=…   server-rendered style guide, regenerated from the URL payload
+/guide?d=…   server-rendered style guide, regenerated from the URL payload;
+             "Another option" links advance one section's reshuffle counter
 /saved       guides saved on this device (localStorage, inputs only)
 ```
 
@@ -31,11 +32,12 @@ npx tsc --noEmit
   contrast.
 - **`lib/styling/`** — styling engine. The couple claims its colours first (`ColourLedger`); other
   groups get freshly derived, exclusion-aware colours; decor reuses the master palette.
-- **`lib/state.ts`** — the `?d=` URL codec (`hex,hex|type+type|styles|coordination`), backward
-  compatible with older links.
+- **`lib/state.ts`** — the `?d=` URL codec (`hex,hex|type+type|styles|coordination[|reshuffles]`),
+  backward compatible with older links.
 - **`lib/storage.ts`** — saved guides with legacy migration and corrupt-data backup.
 - **`lib/constants.ts`** — canonical option IDs shared by everything above.
-- **`data/`** — curated colours, fabrics, outfits, decor templates and option copy.
+- **`data/`** — colour names, metallics, style tones, fabrics, outfits, decor templates and option
+  copy.
 
 The app runs on Next.js 16 — APIs differ from older versions; check `node_modules/next/dist/docs/`
 before changing framework code (see `AGENTS.md`).

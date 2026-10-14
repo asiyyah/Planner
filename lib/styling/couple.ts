@@ -5,8 +5,10 @@ import {
   normalizeHue,
   type Hsl,
 } from "@/lib/color/conversion";
-import { adjustForWedding } from "@/lib/color/wedding-adjustments";
+import type { StyleTone } from "@/data/style-tones";
+import { adjustForWedding, applyTone } from "@/lib/color/wedding-adjustments";
 import {
+  colorFromHsl,
   colorToHsl,
   isAchromatic,
   isNearDuplicate,
@@ -15,7 +17,7 @@ import {
 } from "@/lib/color/palette";
 import { TRADITIONAL_TYPES } from "@/lib/constants";
 import { rankFabrics, rankOutfits } from "./catalog";
-import type { StylingContext } from "./context";
+import { type StylingContext, variantOf } from "./context";
 
 /**
  * The Couple Engine (iteration 02 §9–13, §19).
@@ -36,13 +38,13 @@ export type CoupleBuild = {
   assignedHexes: string[];
 };
 
-/** First pool colour meaningfully distinct from `base`'s hue. */
-function pickDistinctHue(
+/** Pool colours meaningfully distinct from `base`'s hue, in pool order. */
+function distinctHues(
   base: Color,
   pool: Color[],
   minHueGap = 24
-): Color | undefined {
-  return pool.find(
+): Color[] {
+  return pool.filter(
     (c) =>
       c.hex !== base.hex &&
       !isAchromatic(c) &&
@@ -51,8 +53,17 @@ function pickDistinctHue(
   );
 }
 
+/** Pick the `variant`-th option, wrapping; undefined for an empty list. */
+function rotate<T>(options: T[], variant: number): T | undefined {
+  return options.length > 0 ? options[variant % options.length] : undefined;
+}
+
 /** Monochromatic fallback so Look 2 exists even in single-hue palettes. */
-function deriveLookTwoPrimary(hero: Color, usedHexes: string[]): Color {
+function deriveLookTwoPrimary(
+  hero: Color,
+  usedHexes: string[],
+  tone: StyleTone
+): Color {
   const base = colorToHsl(hero);
   const candidates: Hsl[] = [
     { h: base.h, s: Math.max(10, base.s - 8), l: base.l >= 50 ? Math.max(24, base.l - 26) : Math.min(80, base.l + 26) },
@@ -60,15 +71,15 @@ function deriveLookTwoPrimary(hero: Color, usedHexes: string[]): Color {
     { h: normalizeHue(base.h + 30), s: Math.max(10, base.s - 6), l: base.l >= 50 ? 62 : 40 },
   ];
   for (const candidate of candidates) {
-    const shaped = adjustForWedding(candidate);
+    const shaped = adjustForWedding(applyTone(candidate, tone), tone.maxSat);
     if (
       !usedHexes.some((hex) => isNearDuplicate(hexToHsl(hex), shaped)) &&
       hueDistance(shaped.h, hero.hue) > 0
     ) {
-      return makeGeneratedColor(shaped, "couple-look2");
+      return colorFromHsl(shaped, "couple-look2");
     }
   }
-  return makeGeneratedColor({ ...base, l: base.l >= 50 ? 28 : 74 }, "couple-look2");
+  return makeGeneratedColor({ ...base, l: base.l >= 50 ? 28 : 74 }, "couple-look2", tone);
 }
 
 /** Allocate disjoint outfit/fabric names across the two looks. */
@@ -131,43 +142,55 @@ function allocateRankings(
   };
 }
 
+/** Drop missing entries and repeated hexes, keeping first occurrences. */
+function uniqueColours(colours: (Color | undefined)[]): Color[] {
+  const seen = new Set<string>();
+  return colours.filter((c): c is Color => {
+    if (!c || seen.has(c.hex)) return false;
+    seen.add(c.hex);
+    return true;
+  });
+}
+
 export function buildCouple(ctx: StylingContext): CoupleBuild {
   const { palette, styles } = ctx;
 
-  const hero = palette.hero;
-  const lookOneCompanion = palette.accent ?? palette.neutral;
+  const variant = variantOf(ctx, "couple");
 
-  const pool = [
+  const hero = palette.hero;
+  // Reshuffling rotates every pairing choice below.
+  const lookOneOptions = uniqueColours([
+    palette.accent,
+    palette.neutral,
+    ...palette.supporting,
+  ]).filter((c) => c.hex !== hero.hex);
+  const lookOneCompanion = rotate(lookOneOptions, variant) ?? palette.neutral;
+
+  const pool = uniqueColours([
     palette.secondary,
     ...palette.supporting,
     ...palette.anchors.filter((a) => a.hex !== hero.hex),
-  ].filter((c): c is Color => Boolean(c));
+  ]).filter((c) => c.hex !== lookOneCompanion.hex);
 
   const lookTwoPrimary =
-    pickDistinctHue(hero, pool) ??
-    deriveLookTwoPrimary(
-      hero,
-      [hero.hex, lookOneCompanion.hex]
-    );
+    rotate(distinctHues(hero, pool), variant) ??
+    deriveLookTwoPrimary(hero, [hero.hex, lookOneCompanion.hex], ctx.tone);
 
-  const remaining = [
+  const remaining = uniqueColours([
     palette.neutral,
     ...palette.supporting,
     palette.accent,
     palette.secondary,
-  ].filter(
-    (c): c is Color =>
-      Boolean(c) &&
-      c!.hex !== lookTwoPrimary.hex &&
-      c!.hex !== lookOneCompanion.hex
+  ]).filter(
+    (c) => c.hex !== lookTwoPrimary.hex && c.hex !== lookOneCompanion.hex && c.hex !== hero.hex
   );
   const lookTwoCompanion =
-    remaining[0] ??
-    deriveLookTwoPrimary(lookTwoPrimary, [
-      hero.hex,
-      lookOneCompanion.hex,
-      lookTwoPrimary.hex,
-    ]);
+    rotate(remaining, variant) ??
+    deriveLookTwoPrimary(
+      lookTwoPrimary,
+      [hero.hex, lookOneCompanion.hex, lookTwoPrimary.hex],
+      ctx.tone
+    );
 
   const wantsTraditional =
     ctx.weddingTypes.some((t) => TRADITIONAL_TYPES.includes(t)) ||

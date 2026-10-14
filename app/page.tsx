@@ -74,7 +74,7 @@ export default function Home() {
               ))}
             </div>
             <div className="flex items-center justify-between border-t border-black px-6 py-4">
-              <span className="font-heading text-xl italic">Coffee × Sage</span>
+              <span className="font-heading text-xl italic">Your colour × Your colour</span>
               <span className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">
                 08 sections
               </span>

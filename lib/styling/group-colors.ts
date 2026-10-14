@@ -1,17 +1,13 @@
 import { COLORS } from "@/data/colors";
+import { BASE_TONE, type StyleTone } from "@/data/style-tones";
 import type { Color, Palette } from "@/types";
+import { hexToHsl, hslToHex, normalizeHue, type Hsl } from "@/lib/color/conversion";
+import { adjustForWedding, applyTone } from "@/lib/color/wedding-adjustments";
 import {
-  hexToHsl,
-  hslToHex,
-  normalizeHue,
-  type Hsl,
-} from "@/lib/color/conversion";
-import { adjustForWedding } from "@/lib/color/wedding-adjustments";
-import {
+  colorFromHsl,
   colorToHsl,
   isAchromatic,
   isNearDuplicate,
-  makeGeneratedColor,
 } from "@/lib/color/palette";
 
 /**
@@ -134,78 +130,115 @@ export class ColourLedger {
   }
 }
 
+export type GroupColourOptions = {
+  /** Reshuffle counter: 0 is the first option, each step the next set. */
+  variant?: number;
+  /** Style tone shaping saturation and depth. */
+  tone?: StyleTone;
+};
+
+/** Lightness steps the widening sweep explores, deep to pale. */
+const WIDEN_LIGHTNESS = [28, 40, 52, 64, 76];
+
+/** Reshuffles cycle after this many options per group. */
+const MAX_GROUP_VARIANTS = 64;
+
+/**
+ * Walk the candidate pool from `start` (wrapping) and take up to `count`
+ * mutually distinct colours, skipping any hex in `avoid`.
+ */
+function selectWindow(
+  pool: Hsl[],
+  count: number,
+  start: number,
+  avoid: Set<string>
+): { picks: Hsl[]; next: number } {
+  const picks: Hsl[] = [];
+  let i = 0;
+  for (; i < pool.length && picks.length < count; i += 1) {
+    const candidate = pool[(start + i) % pool.length];
+    if (avoid.has(hslToHex(candidate))) continue;
+    if (picks.some((p) => isNearDuplicate(p, candidate))) continue;
+    picks.push(candidate);
+  }
+  return { picks, next: pool.length > 0 ? (start + i) % pool.length : 0 };
+}
+
 /**
  * Generate `count` distinct colours for a non-couple group: harmonised with
- * the master palette, shaped for the group, and guaranteed clear of every
- * ledger entry (the couple's exclusive colours come first).
+ * the master palette, shaped for the group and the chosen styles, and
+ * guaranteed clear of every ledger entry (the couple's exclusive colours
+ * come first).
+ *
+ * Valid candidates are collected in a fixed relationship × depth order.
+ * Variant 0 takes the first distinct set (closest to the theme); each later
+ * variant continues where the previous set stopped and never repeats its
+ * colours — deterministic, never "reroll and hope".
  */
 export function generateGroupColours(
   palette: Palette,
   profile: GroupProfile,
   ledger: ColourLedger,
-  count: number
+  count: number,
+  options: GroupColourOptions = {}
 ): Color[] {
-  const accepted: Color[] = [];
+  const tone = options.tone ?? BASE_TONE;
+  const variant = Math.max(0, Math.floor(options.variant ?? 0)) % MAX_GROUP_VARIANTS;
   const biases = PROFILE_HUE_BIAS[profile] ?? [];
   const recipes = DEPTH_RECIPES[profile];
+  const pool: Hsl[] = [];
+  const poolHexes = new Set<string>();
 
-  const tryCandidate = (hue: number, recipeIndex: number): boolean => {
-    const recipe = recipes[recipeIndex % recipes.length];
-    const candidate = adjustForWedding({
-      h: normalizeHue(hue),
-      s: recipe.s,
-      l: recipe.l,
-    });
-    const hex = hslToHex(candidate);
-
-    if (accepted.some((c) => c.hex === hex)) return false;
-    if (isBridalWhite(candidate)) return false;
-    if (ledger.isNearTaken(candidate)) return false;
-    if (
-      accepted.some((c) => isNearDuplicate(candidate, colorToHsl(c)))
-    ) {
-      return false;
-    }
-
-    accepted.push(makeGeneratedColor(candidate, profile));
-    return true;
+  const consider = (raw: Hsl): void => {
+    // Judge the colour exactly as it will be shown (after hex rounding).
+    const hex = hslToHex(adjustForWedding(applyTone(raw, tone), tone.maxSat));
+    if (poolHexes.has(hex)) return;
+    const candidate = hexToHsl(hex);
+    if (isBridalWhite(candidate)) return;
+    if (ledger.isNearTaken(candidate)) return;
+    poolHexes.add(hex);
+    pool.push(candidate);
   };
 
   const seeds = seedHues(palette);
-
-  outer: for (const seed of seeds) {
+  for (const seed of seeds) {
     for (const relation of RELATIONSHIP_LADDER) {
       const baseHue = normalizeHue(seed + relation);
       const hueVariants = [baseHue, ...biases.map((b) => normalizeHue(baseHue + b))];
       for (const hue of hueVariants) {
-        for (let r = 0; r < recipes.length; r += 1) {
-          if (tryCandidate(hue, r) && accepted.length >= count) break outer;
-        }
+        for (const recipe of recipes) consider({ h: hue, s: recipe.s, l: recipe.l });
       }
     }
   }
 
-  // Guaranteed-termination widening: deepen/lighten progressively until the
-  // count is met. Deterministic, and unreachable in practice.
-  let widenStep = 0;
-  while (accepted.length < count && widenStep < 24) {
-    const seed = seeds[widenStep % seeds.length];
-    const hue = normalizeHue(seed + ((widenStep * 17) % 360));
-    const l = 24 + ((widenStep * 9) % 64);
-    const s = 12 + ((widenStep * 7) % 40);
-    const candidate = adjustForWedding({ h: hue, s, l });
-    const hex = hslToHex(candidate);
-    if (
-      !accepted.some((c) => c.hex === hex) &&
-      !isBridalWhite(candidate) &&
-      !ledger.isNearTaken(candidate) &&
-      !accepted.some((c) => isNearDuplicate(candidate, colorToHsl(c)))
-    ) {
-      accepted.push(makeGeneratedColor(candidate, profile));
+  // Widening for crowded weddings (groups late in line, e.g. guests, or
+  // quiet styles where soft tones crowd together): sweep the whole wheel at
+  // the group's own depths, then across a full deep-to-pale lightness ladder,
+  // until a full distinct set exists. Deterministic and bounded.
+  const fullSet = () => selectWindow(pool, count, 0, new Set()).picks.length >= count;
+  const WIDEN_DEPTHS = [
+    ...recipes,
+    ...WIDEN_LIGHTNESS.flatMap((l) => [{ s: 34, l }, { s: 52, l }]),
+  ];
+  for (const recipe of WIDEN_DEPTHS) {
+    if (fullSet()) break;
+    for (let hue = 0; hue < 360; hue += 15) {
+      consider({ h: normalizeHue(seeds[0] + hue), s: recipe.s, l: recipe.l });
     }
-    widenStep += 1;
   }
 
-  ledger.claim(accepted.map((c) => c.hex));
-  return accepted;
+  let window = selectWindow(pool, count, 0, new Set());
+  for (let v = 1; v <= variant; v += 1) {
+    const previous = new Set(window.picks.map(hslToHex));
+    const next = selectWindow(pool, count, window.next, previous);
+    // Too few options left to avoid the last set entirely — allow overlap.
+    window = next.picks.length === count ? next : selectWindow(pool, count, window.next, new Set());
+  }
+  // Which colours a walk keeps depends on where it starts; never let a
+  // reshuffle return a short set when the first (complete) one exists.
+  if (window.picks.length < count) window = selectWindow(pool, count, 0, new Set());
+
+  const picks = window.picks.map((hsl) => colorFromHsl(hsl, profile));
+  ledger.claim(picks.map((c) => c.hex));
+  return picks;
 }

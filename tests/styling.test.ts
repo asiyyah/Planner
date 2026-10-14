@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { generateStyleGuide } from "@/lib/styling";
 import { hexesNearDuplicate } from "@/lib/color/palette";
+import { hexToHsl } from "@/lib/color/conversion";
 import type { PlannerInputs, StyleGuide } from "@/types";
 
 // PRD §43 golden path
@@ -28,7 +29,7 @@ describe("styling engine — PRD §43 golden path", () => {
   it("builds the expected palette roles around user anchors", () => {
     expect(guide.palette.hero.hex).toBe("#5C4033");
     expect(guide.palette.secondary.hex).toBe("#9CAF88");
-    expect(guide.palette.neutral.id).toBe("ivory");
+    expect(guide.palette.neutral.category).toBe("neutral");
     expect(guide.palette.accent?.category).toBe("accent");
     expect(guide.palette.anchors.map((c) => c.hex)).toEqual([
       "#5C4033",
@@ -37,7 +38,7 @@ describe("styling engine — PRD §43 golden path", () => {
   });
 
   it("decor reuses the same palette", () => {
-    expect(guide.decor.base.name).toBe("Ivory");
+    expect(guide.decor.base.hex).toBe(guide.palette.neutral.hex);
     expect(guide.decor.primary.name).toBe("Coffee Brown");
     const allUsage = guide.decor.elements.map((e) => e.colorUsage).join(" ");
     expect(allUsage).toContain("Coffee Brown");
@@ -273,5 +274,121 @@ describe("styling engine — audit regressions", () => {
       colors: ["#336699", "#7A9CC2"],
     });
     expect(g.palette.supporting.length).toBeGreaterThan(0);
+  });
+});
+
+describe("styling engine — style tone, derived roles and reshuffles", () => {
+  const chromaticSaturation = (g: StyleGuide) => {
+    const generated = [
+      ...g.palette.supporting,
+      ...g.bridesmaids.colors,
+      ...g.groomsmen.colors,
+      ...g.brideFamily.colors,
+      ...g.groomFamily.colors,
+      ...g.guests.recommended,
+    ];
+    const sats = generated.map((c) => hexToHsl(c.hex).s);
+    return sats.reduce((a, b) => a + b, 0) / sats.length;
+  };
+
+  it("lets the chosen style change the generated colours", () => {
+    const bold = generateStyleGuide({ ...GOLDEN, styles: ["bold"] });
+    const minimal = generateStyleGuide({ ...GOLDEN, styles: ["minimal"] });
+    expect(groupColours(bold)).not.toEqual(groupColours(minimal));
+    expect(chromaticSaturation(bold)).toBeGreaterThan(chromaticSaturation(minimal) + 10);
+  });
+
+  it("lets bold styles go beyond the old muted ceiling", () => {
+    const vivid = generateStyleGuide({
+      ...GOLDEN,
+      colors: ["#FF0000", "#0000FF"],
+      styles: ["bold"],
+    });
+    const max = Math.max(...groupColours(vivid).map((hex) => hexToHsl(hex).s));
+    expect(max).toBeGreaterThan(50);
+  });
+
+  it("never pins the neutral or metallic to one fixed colour", () => {
+    const neutrals = new Set<string>();
+    const metals = new Set<string>();
+    for (const hex of ["#5C4033", "#1F3A93", "#B03A2E", "#2E7D32", "#7D3C98", "#C9A227"]) {
+      for (const styles of [[], ["romantic"], ["modern"]] as const) {
+        const p = generateStyleGuide({ ...GOLDEN, colors: [hex], styles: [...styles] }).palette;
+        neutrals.add(p.neutral.hex);
+        if (p.accent) metals.add(p.accent.name);
+      }
+    }
+    expect(neutrals.size).toBeGreaterThan(6);
+    expect(metals.size).toBeGreaterThan(3);
+  });
+
+  const SECTIONS = [
+    ["palette", (g: StyleGuide) => g.palette.additions.map((c) => c.hex)],
+    ["couple", (g: StyleGuide) => g.couple.looks.flatMap((l) => l.colors.map((c) => c.hex))],
+    ["bridesmaids", (g: StyleGuide) => g.bridesmaids.colors.map((c) => c.hex)],
+    ["groomsmen", (g: StyleGuide) => g.groomsmen.colors.map((c) => c.hex)],
+    ["brideFamily", (g: StyleGuide) => g.brideFamily.colors.map((c) => c.hex)],
+    ["groomFamily", (g: StyleGuide) => g.groomFamily.colors.map((c) => c.hex)],
+    ["guests", (g: StyleGuide) => g.guests.recommended.map((c) => c.hex)],
+  ] as const;
+
+  for (const [key, pick] of SECTIONS) {
+    it(`"another option" changes ${key} and is repeatable`, () => {
+      const first = generateStyleGuide(GOLDEN);
+      const next = generateStyleGuide({ ...GOLDEN, variants: { [key]: 1 } });
+      expect(pick(next)).not.toEqual(pick(first));
+      expect(generateStyleGuide({ ...GOLDEN, variants: { [key]: 1 } })).toEqual(next);
+    });
+  }
+
+  it("keeps every section full under quiet styles and crowded reshuffles", () => {
+    // Soft styles crowd colours together; these reshuffles once left guests short.
+    const base: PlannerInputs = {
+      colors: ["#664AF3"],
+      weddingTypes: ["white"],
+      styles: ["elegant", "romantic", "minimal"],
+      coordination: "different",
+    };
+    for (const variants of [{ palette: 1 }, { palette: 11 }, { couple: 10 }, { couple: 23 }]) {
+      const g = generateStyleGuide({ ...base, variants });
+      expect(g.guests.recommended).toHaveLength(3);
+      expect(g.guests.optional).toHaveLength(2);
+    }
+  });
+
+  it("never names a generated colour after a metal", () => {
+    const g = generateStyleGuide({ ...GOLDEN, colors: ["#4A5D26", "#299505"], styles: ["minimal"] });
+    const generated = [
+      g.palette.neutral,
+      ...g.palette.supporting,
+      ...g.bridesmaids.colors,
+      ...g.groomsmen.colors,
+      ...g.guests.recommended,
+    ];
+    for (const c of generated) {
+      expect(["Gold", "Silver", "Rose Gold", "Champagne Gold"]).not.toContain(c.name);
+    }
+  });
+
+  it("keeps the user's picks exactly as chosen through palette reshuffles", () => {
+    for (let v = 0; v < 6; v += 1) {
+      const g = generateStyleGuide({ ...GOLDEN, variants: { palette: v } });
+      expect(g.palette.anchors.map((c) => c.hex)).toEqual(GOLDEN.colors);
+    }
+  });
+
+  it("keeps couple colours exclusive through any combination of reshuffles", () => {
+    for (let v = 0; v < 6; v += 1) {
+      const g = generateStyleGuide({
+        ...GOLDEN,
+        variants: { palette: v, couple: v + 1, bridesmaids: v, groomsmen: 2 * v, brideFamily: v, groomFamily: v + 2, guests: v },
+      });
+      const coupleHexes = g.couple.looks.flatMap((l) => l.colors).map((c) => c.hex);
+      for (const groupHex of groupColours(g)) {
+        for (const coupleHex of coupleHexes) {
+          expect(hexesNearDuplicate(groupHex, coupleHex)).toBe(false);
+        }
+      }
+    }
   });
 });

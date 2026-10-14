@@ -1,6 +1,6 @@
 import type { Color, ColorRef, GuestGuide } from "@/types";
 import { describeColor, hexesNearDuplicate } from "@/lib/color/palette";
-import { type StylingContext } from "./context";
+import { type StylingContext, variantOf } from "./context";
 import {
   BRIDAL_WHITES,
   ColourLedger,
@@ -22,8 +22,9 @@ export function buildGuests(ctx: StylingContext, ledger: ColourLedger): GuestGui
   // The couple claims first, so the head of the ledger is the couple's colours.
   const coupleHexes = ledger.taken.slice(0, MAX_COUPLE_AVOID);
 
-  const recommended: Color[] = generateGroupColours(ctx.palette, "guests", ledger, 3);
-  const optional: Color[] = generateGroupColours(ctx.palette, "guests", ledger, 2);
+  const options = { tone: ctx.tone, variant: variantOf(ctx, "guests") };
+  const recommended: Color[] = generateGroupColours(ctx.palette, "guests", ledger, 3, options);
+  const optional: Color[] = generateGroupColours(ctx.palette, "guests", ledger, 2, options);
 
   const avoid: ColorRef[] = coupleHexes.map((hex) => ({
     name: nameFor(ctx, hex),

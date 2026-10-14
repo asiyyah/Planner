@@ -19,12 +19,24 @@ describe("state codec — v3 (dynamic colours + multi-select types)", () => {
     expect(decodeInputs(encodeInputs(single))).toEqual(single);
   });
 
-  it("supports more than two colours", () => {
+  it("keeps only the first two colours (a 1st and optional 2nd)", () => {
     const many = {
       ...inputs,
       colors: ["#5C4033", "#9CAF88", "#D4AF37", "#1F3A5F"],
     };
-    expect(decodeInputs(encodeInputs(many))).toEqual(many);
+    expect(decodeInputs(encodeInputs(many))?.colors).toEqual(["#5C4033", "#9CAF88"]);
+  });
+
+  it("round-trips reshuffle counters and omits them when all are zero", () => {
+    const shuffled: PlannerInputs = { ...inputs, variants: { couple: 2, guests: 1 } };
+    expect(decodeURIComponent(encodeInputs(shuffled)).split("|")).toHaveLength(5);
+    expect(decodeInputs(encodeInputs(shuffled))).toEqual(shuffled);
+    expect(decodeURIComponent(encodeInputs({ ...inputs, variants: {} })).split("|")).toHaveLength(4);
+  });
+
+  it("treats malformed or huge counters safely", () => {
+    const decoded = decodeInputs(encodeURIComponent("5C4033|white||same|x.-3.5000000"));
+    expect(decoded?.variants).toEqual({ bridesmaids: 999 });
   });
 
   it("encodes multiple wedding types with '+' separators", () => {

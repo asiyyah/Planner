@@ -32,7 +32,10 @@ export function RevealStep({
   const reducedMotion = useReducedMotion();
   const [stage, setStage] = useState<Stage>("intro");
 
-  const palette = useMemo(() => generatePalette(colors), [colors]);
+  const palette = useMemo(
+    () => generatePalette(colors, { styles }),
+    [colors, styles]
+  );
 
   useEffect(() => {
     if (reducedMotion) {

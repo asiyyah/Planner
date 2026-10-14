@@ -161,9 +161,12 @@ function SavedCard({
   const encoded = encodeInputs(entry.inputs);
   // Regenerated from inputs so the preview always matches the opened guide.
   const colors = useMemo(() => {
-    const palette = generatePalette(entry.inputs.colors);
+    const palette = generatePalette(entry.inputs.colors, {
+      styles: entry.inputs.styles,
+      variant: entry.inputs.variants?.palette,
+    });
     return [...palette.anchors, ...palette.additions];
-  }, [entry.inputs.colors]);
+  }, [entry.inputs]);
 
   return (
     <li className="border border-black bg-white">

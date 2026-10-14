@@ -35,7 +35,7 @@ export function ColourStep({ colors, onChange, onBack, onNext }: ColourStepProps
         <StepHeading
           step="Step 01 — Colours"
           title="Choose your colours"
-          supporting="Pick a colour you love — that’s all it takes. We’ll build a harmonious palette around it, and you can add more colours any time."
+          supporting="Choose two colours you love — they can be anything. Don’t worry about whether they match; we’ll work out the harmony. Only have one? That’s enough — we’ll find its partner."
         />
       </div>
 
@@ -105,20 +105,14 @@ export function ColourStep({ colors, onChange, onBack, onNext }: ColourStepProps
               colors.length === 0 ? "hidden" : "mt-6 block"
             )}
           >
-            + Add another colour
+            + Add a second colour
           </button>
         </ColorPickerPopover>
       ) : (
         <p className="mt-6 text-xs uppercase tracking-widest text-neutral-500">
-          That’s a full palette — remove a colour to make room.
+          Two colours chosen — remove one to swap it.
         </p>
       )}
-
-      {colors.length > 1 && canAddMore ? (
-        <p className="mt-3 text-xs text-neutral-500">
-          Two or three colours is plenty — but follow your instinct.
-        </p>
-      ) : null}
 
       <WizardActions
         onNext={onNext}

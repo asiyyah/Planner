@@ -7,7 +7,6 @@ import {
   isAchromatic,
 } from "@/lib/color/palette";
 import { normalizeHex } from "@/lib/color/conversion";
-import { MAX_COLORS } from "@/lib/constants";
 import { isWeddingFriendly } from "@/lib/color/wedding-adjustments";
 import type { Color } from "@/types";
 
@@ -78,8 +77,10 @@ describe("generatePalette — golden pair (Coffee × Sage, iteration §12)", () 
   it("assigns every PRD role without duplicates", () => {
     const colors = fullPalette(palette).map((c) => c.hex);
     expect(new Set(colors).size).toBe(colors.length);
-    expect(palette.neutral.id).toBe("ivory");
-    expect(palette.accent?.id).toBe("gold");
+    // Neutral is tinted from the hero, not taken from a fixed list.
+    expect(palette.neutral.category).toBe("neutral");
+    expect(palette.neutral.hue).toBe(palette.hero.hue);
+    expect(palette.accent?.id).toMatch(/^metal-/);
   });
 
   it("explains the palette in plain language around the anchors", () => {
@@ -144,17 +145,17 @@ describe("generatePalette — achromatic handling", () => {
     const colors = fullPalette(palette).map((c) => c.hex);
     expect(new Set(colors).size).toBe(colors.length);
     expect(palette.harmony).toBe("monochromatic");
-    expect(palette.accent).toBeUndefined();
+    // Greys still get a (cool) metallic finish.
+    expect(palette.accent?.category).toBe("accent");
     expect(palette.secondary.hex).toBe("#3A3A3A");
   });
 });
 
-describe("generatePalette — many colours (no fixed limit)", () => {
+describe("generatePalette — engine tolerates extra anchors (the product caps picks at MAX_COLORS)", () => {
   it("supports five anchors without displacing any of them", () => {
     const picks = [COFFEE, SAGE, "#1F3A5F", "#F7E7CE", "#D4AF37"];
     const palette = generatePalette(picks);
     expect(palette.anchors.map((c) => c.hex)).toEqual(picks);
-    expect(MAX_COLORS).toBeGreaterThanOrEqual(picks.length);
     const colors = fullPalette(palette).map((c) => c.hex);
     expect(new Set(colors).size).toBe(colors.length);
     expect(palette.neutral.category).toBe("neutral");

@@ -126,7 +126,7 @@ describe("saved-guide migration", () => {
     const [guide] = listSavedGuides();
 
     expect(guide.inputs.weddingTypes).toEqual(["traditional", "white"]);
-    expect(guide.inputs.colors).toHaveLength(3);
+    expect(guide.inputs.colors).toHaveLength(2); // capped to a 1st + 2nd colour
   });
 
   it("falls back to white when every stored wedding type is unknown", async () => {

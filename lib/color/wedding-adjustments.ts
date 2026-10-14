@@ -1,3 +1,5 @@
+import { BASE_TONE, STYLE_TONES, type StyleTone } from "@/data/style-tones";
+import type { WeddingStyleId } from "@/types";
 import { normalizeHue, type Hsl } from "./conversion";
 
 /**
@@ -12,8 +14,8 @@ import { normalizeHue, type Hsl } from "./conversion";
  * vision is preserved exactly as chosen.
  */
 
-/** Soft ceiling for generated saturation. */
-export const MAX_WEDDING_SATURATION = 62;
+/** Soft ceiling for generated saturation when no style says otherwise. */
+export const MAX_WEDDING_SATURATION = BASE_TONE.maxSat;
 
 /** Saturation above this reads as neon and gets pulled down harder. */
 const NEON_SATURATION = 85;
@@ -29,8 +31,12 @@ function round(value: number): number {
 /**
  * Mute and rebalance an arbitrary generated colour into wedding-friendly
  * territory. Deterministic; idempotent on already-gentle colours.
+ * `maxSaturation` lets bolder styles raise the ceiling.
  */
-export function adjustForWedding({ h, s, l }: Hsl): Hsl {
+export function adjustForWedding(
+  { h, s, l }: Hsl,
+  maxSaturation = MAX_WEDDING_SATURATION
+): Hsl {
   const hue = round(normalizeHue(h));
   const lightness = round(
     Math.max(MIN_WEDDING_LIGHTNESS, Math.min(MAX_WEDDING_LIGHTNESS, l))
@@ -42,13 +48,13 @@ export function adjustForWedding({ h, s, l }: Hsl): Hsl {
   }
 
   let saturation = s;
-  if (saturation >= NEON_SATURATION) {
-    // Hard neon: pull well inside the muted band.
-    saturation = MAX_WEDDING_SATURATION - 8;
-  } else if (saturation > MAX_WEDDING_SATURATION) {
+  if (saturation >= Math.max(NEON_SATURATION, maxSaturation + 4)) {
+    // Hard neon: pull well inside the band.
+    saturation = maxSaturation - 8;
+  } else if (saturation > maxSaturation) {
     // Compress excess saturation rather than clipping it.
-    const excess = saturation - MAX_WEDDING_SATURATION;
-    saturation = MAX_WEDDING_SATURATION + excess * 0.35;
+    const excess = saturation - maxSaturation;
+    saturation = maxSaturation + excess * 0.35;
   }
 
   return { h: hue, s: round(saturation), l: lightness };
@@ -68,13 +74,54 @@ export function companionDepth(
   return index % 2 === 0 ? { s: 36, l: 46 } : { s: 28, l: 66 };
 }
 
+/* ------------------------------- Style tone -------------------------------- */
+
+/** Blend the tones of every selected style; no styles → the base tone. */
+export function toneFor(styles: readonly WeddingStyleId[]): StyleTone {
+  if (styles.length === 0) return BASE_TONE;
+  const tones = styles.map((style) => STYLE_TONES[style]);
+  const mean = (pick: (t: StyleTone) => number) =>
+    tones.reduce((sum, t) => sum + pick(t), 0) / tones.length;
+  return {
+    satScale: mean((t) => t.satScale),
+    lightShift: mean((t) => t.lightShift),
+    maxSat: mean((t) => t.maxSat),
+  };
+}
+
+/** Shift a generated colour's intensity and depth toward the style's tone. */
+export function applyTone({ h, s, l }: Hsl, tone: StyleTone): Hsl {
+  return {
+    h,
+    s: Math.max(0, Math.min(100, s * tone.satScale)),
+    l: Math.max(8, Math.min(92, l + tone.lightShift)),
+  };
+}
+
+/* --------------------------------- Neutrals -------------------------------- */
+
 /**
- * A gentle neutral tone in the same temperature family as the base —
- * ivory/cream territory for warm palettes, soft white for cool ones.
+ * Neutral options derived from the user's own colour — tinted whites,
+ * creams and stones carrying a whisper of its hue, plus a deep neutral for
+ * crisper styles. Ordered lightest-first; callers rotate for alternatives.
  */
-export function neutralTone(base: Hsl): Hsl {
-  const warm = base.h <= 70 || base.h >= 330 || base.s < 6;
-  return warm ? { h: 48, s: 24, l: 93 } : { h: 210, s: 10, l: 95 };
+export function neutralCandidates(
+  base: Hsl,
+  options: { deep?: boolean } = {}
+): Hsl[] {
+  const chromatic = base.s >= 8;
+  const warm = !chromatic || base.h <= 70 || base.h >= 330;
+  // Achromatic picks borrow a warm stone hue so neutrals don't read as grey.
+  const h = chromatic ? base.h : 40;
+  const tint = chromatic ? 1 : 0.6;
+  const candidates: Hsl[] = [
+    { h, s: (warm ? 30 : 16) * tint, l: 94 },
+    { h, s: (warm ? 26 : 14) * tint, l: 87 },
+    { h, s: (warm ? 16 : 10) * tint, l: 77 },
+    { h, s: (warm ? 12 : 8) * tint, l: 64 },
+  ];
+  if (options.deep) candidates.push({ h, s: 10 * tint, l: 22 });
+  return candidates;
 }
 
 /** True when a colour already sits within wedding-friendly bounds. */

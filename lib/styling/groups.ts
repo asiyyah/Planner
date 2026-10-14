@@ -1,6 +1,6 @@
 import type { Color, StylingRecommendation } from "@/types";
 import { selectFabrics, selectOutfits } from "./catalog";
-import { type StylingContext } from "./context";
+import { type StylingContext, variantOf } from "./context";
 import {
   ColourLedger,
   generateGroupColours,
@@ -40,7 +40,10 @@ export function buildParty(
 ): { bridesmaids: StylingRecommendation; groomsmen: StylingRecommendation } {
   const same = ctx.coordination === "same";
 
-  const bridesmaidColours = generateGroupColours(ctx.palette, "bridesmaids", ledger, 2);
+  const bridesmaidColours = generateGroupColours(ctx.palette, "bridesmaids", ledger, 2, {
+    tone: ctx.tone,
+    variant: variantOf(ctx, "bridesmaids"),
+  });
   const bridesmaids: StylingRecommendation = {
     group: "bridesmaids",
     title: "Bridesmaids",
@@ -55,9 +58,10 @@ export function buildParty(
 
   // Same-mode shares the bridesmaid primary; different-mode generates its own
   // groomsmen direction — both always clear of the couple.
+  const groomsmenOptions = { tone: ctx.tone, variant: variantOf(ctx, "groomsmen") };
   const groomsmanColours = same && bridesmaidColours[0]
-    ? [bridesmaidColours[0], ...generateGroupColours(ctx.palette, "groomsmen", ledger, 1)]
-    : generateGroupColours(ctx.palette, "groomsmen", ledger, 2);
+    ? [bridesmaidColours[0], ...generateGroupColours(ctx.palette, "groomsmen", ledger, 1, groomsmenOptions)]
+    : generateGroupColours(ctx.palette, "groomsmen", ledger, 2, groomsmenOptions);
 
   const groomsmen: StylingRecommendation = {
     group: "groomsmen",
@@ -81,7 +85,10 @@ export function buildFamilies(
   ctx: StylingContext,
   ledger: ColourLedger
 ): { brideFamily: StylingRecommendation; groomFamily: StylingRecommendation } {
-  const brideColours = generateGroupColours(ctx.palette, "bride-family", ledger, 2);
+  const brideColours = generateGroupColours(ctx.palette, "bride-family", ledger, 2, {
+    tone: ctx.tone,
+    variant: variantOf(ctx, "brideFamily"),
+  });
   const brideFamily: StylingRecommendation = {
     group: "bride-family",
     title: "Bride's Family",
@@ -92,7 +99,10 @@ export function buildFamilies(
     notes: `An aso-ebi direction of its own — warm companions to the couple's colours rather than echoes of them.`,
   };
 
-  const groomColours = generateGroupColours(ctx.palette, "groom-family", ledger, 2);
+  const groomColours = generateGroupColours(ctx.palette, "groom-family", ledger, 2, {
+    tone: ctx.tone,
+    variant: variantOf(ctx, "groomFamily"),
+  });
   const groomFamily: StylingRecommendation = {
     group: "groom-family",
     title: "Groom's Family",

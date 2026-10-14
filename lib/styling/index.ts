@@ -1,4 +1,5 @@
 import { generatePalette } from "@/lib/color/palette";
+import { toneFor } from "@/lib/color/wedding-adjustments";
 import { normalizeHex } from "@/lib/color/conversion";
 import type { PlannerInputs, StyleGuide } from "@/types";
 import type { StylingContext } from "./context";
@@ -28,13 +29,19 @@ export function generateStyleGuide(inputs: PlannerInputs): StyleGuide {
     throw new Error("At least one wedding type is required");
   }
 
-  const palette = generatePalette(inputs.colors);
+  const variants = inputs.variants ?? {};
+  const palette = generatePalette(inputs.colors, {
+    styles: inputs.styles,
+    variant: variants.palette,
+  });
 
   const ctx: StylingContext = {
     palette,
     weddingTypes: inputs.weddingTypes,
     styles: inputs.styles,
     coordination: inputs.coordination,
+    tone: toneFor(inputs.styles),
+    variants,
   };
 
   // 1. The couple first — their looks claim exclusive colours.

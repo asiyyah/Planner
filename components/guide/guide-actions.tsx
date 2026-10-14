@@ -92,7 +92,7 @@ export function GuideActions({ guide }: { guide: StyleGuide }) {
               id="guide-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Coffee × Sage"
+              placeholder={guideTitle(guide)}
             />
           </div>
           <DialogFooter>

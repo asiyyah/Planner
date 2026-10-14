@@ -1,6 +1,14 @@
 import { COLORS } from "@/data/colors";
 import { HARMONIES, TONE_WORDS } from "@/data/harmonies";
-import type { Color, ColorCategory, HarmonyName, Palette } from "@/types";
+import { METALS, type Metal, type MetalTemperature } from "@/data/metallics";
+import { BASE_TONE, type StyleTone } from "@/data/style-tones";
+import type {
+  Color,
+  ColorCategory,
+  HarmonyName,
+  Palette,
+  WeddingStyleId,
+} from "@/types";
 import {
   hexToHsl,
   hslToHex,
@@ -9,15 +17,13 @@ import {
   normalizeHue,
   type Hsl,
 } from "./conversion";
-import {
-  classifyAnchors,
-  DEFAULT_HARMONY,
-  generateHarmony,
-} from "./harmony";
+import { classifyAnchors, generateHarmony } from "./harmony";
 import {
   adjustForWedding,
+  applyTone,
   companionDepth,
-  neutralTone,
+  neutralCandidates,
+  toneFor,
 } from "./wedding-adjustments";
 
 /**
@@ -84,11 +90,14 @@ export const NAMING_TOLERANCE = 0.24;
  * metadata (iteration §6). Returns null when a colour is truly its own thing.
  */
 export function nearestLibraryColor(
-  hsl: Hsl
+  hsl: Hsl,
+  options: { allowMetals?: boolean } = {}
 ): { color: Color; distance: number } | null {
+  const allowMetals = options.allowMetals ?? true;
   let best = COLORS[0];
   let bestDist = Number.POSITIVE_INFINITY;
   for (const color of COLORS) {
+    if (!allowMetals && color.category === "accent") continue;
     const d = weightedDistance(hsl, colorToHsl(color));
     if (d < bestDist) {
       bestDist = d;
@@ -153,9 +162,18 @@ export function describeHsl({ h, s, l }: Hsl): string {
 }
 
 /** Library name when close enough, otherwise a descriptive fallback. */
-export function describeColor(hex: string): string {
-  const near = nearestLibraryColor(hexToHsl(hex));
-  return near ? near.color.name : describeHsl(hexToHsl(hex));
+/**
+ * Library name when close enough, otherwise a descriptive fallback. Generated
+ * colours pass `allowMetals: false` so a grey is never called "Silver" or a
+ * yellow "Gold" — metal names belong to the palette's metallic accent.
+ */
+export function describeColor(
+  hex: string,
+  options: { allowMetals?: boolean } = {}
+): string {
+  const hsl = hexToHsl(hex);
+  const near = nearestLibraryColor(hsl, options);
+  return near ? near.color.name : describeHsl(hsl);
 }
 
 /** Rough category inference so dynamic colours carry usable metadata. */
@@ -186,74 +204,145 @@ export function makeAnchorColor(hex: string, index: number): Color {
   };
 }
 
-/** An engine-generated colour — always passed through the wedding filter. */
-export function makeGeneratedColor(hsl: Hsl, kind: string): Color {
-  const adjusted = adjustForWedding(hsl);
-  const hex = hslToHex(adjusted);
+/** Build a Color from final HSL values (no further adjustment). */
+export function colorFromHsl(
+  hsl: Hsl,
+  kind: string,
+  category: ColorCategory = classifyColor(hsl)
+): Color {
+  const hex = hslToHex(hsl);
   return {
     id: `gen-${kind}-${hex.slice(1).toLowerCase()}`,
-    name: describeColor(hex),
+    name: describeColor(hex, { allowMetals: false }),
     hex,
-    hue: adjusted.h,
-    saturation: adjusted.s,
-    lightness: adjusted.l,
-    category: classifyColor(adjusted),
+    hue: hsl.h,
+    saturation: hsl.s,
+    lightness: hsl.l,
+    category,
   };
+}
+
+/**
+ * An engine-generated colour — shaped by the style tone, then passed
+ * through the wedding filter (whose ceiling the tone also sets).
+ */
+export function makeGeneratedColor(
+  hsl: Hsl,
+  kind: string,
+  tone: StyleTone = BASE_TONE
+): Color {
+  return colorFromHsl(adjustForWedding(applyTone(hsl, tone), tone.maxSat), kind);
 }
 
 /* ------------------------------ Role selection ----------------------------- */
 
-const NEUTRAL_PRIORITY_WARM = ["ivory", "champagne", "cream", "beige", "taupe"];
-const NEUTRAL_PRIORITY_COOL = ["white", "cream", "ivory", "taupe"];
+/** Harmonies tried for a single pick, by style tone; reshuffling walks the list. */
+const RICH_MODES: HarmonyName[] = ["complementary", "split-complementary", "triadic", "analogous", "tetradic"];
+const BALANCED_MODES: HarmonyName[] = ["analogous", "complementary", "split-complementary", "triadic", "monochromatic"];
+const SOFT_MODES: HarmonyName[] = ["analogous", "monochromatic", "split-complementary", "complementary"];
 
-const ACCENT_WARM = "gold";
-const ACCENT_WARM_FALLBACK = "champagne-gold";
-const ACCENT_COOL = "silver";
-const ACCENT_ROSE = "rose-gold";
+/** Further relationships explored once the main harmony's hues are used up. */
+const EXTENSION_MODES: HarmonyName[] = ["analogous", "split-complementary", "triadic", "complementary"];
 
+function singleAnchorModes(tone: StyleTone): HarmonyName[] {
+  if (tone.satScale >= 1.2) return RICH_MODES;
+  if (tone.satScale <= 0.75) return SOFT_MODES;
+  return BALANCED_MODES;
+}
+
+/**
+ * Candidate hues for supporting colours, drawn from every chromatic pick (not
+ * just the first): the main harmony first, then wider relationships. Hues
+ * near a pick or near each other are dropped.
+ */
+function supportingHues(seeds: Hsl[], mode: HarmonyName): number[] {
+  const hues: number[] = [];
+  for (const m of [mode, ...EXTENSION_MODES.filter((x) => x !== mode)]) {
+    for (const seed of seeds) {
+      for (const { h } of generateHarmony(seed, m)) {
+        if (seeds.some((a) => hueDistance(a.h, h) <= 16)) continue;
+        if (hues.some((x) => hueDistance(x, h) < 12)) continue;
+        hues.push(normalizeHue(h));
+      }
+    }
+  }
+  return hues;
+}
+
+/**
+ * The neutral is derived from the user's colour — a tinted white, cream or
+ * stone carrying its hue — rather than taken from a fixed list. Deeper styles
+ * start a step darker; crisp styles may get a deep neutral.
+ */
 function pickNeutral(
   hero: Color,
-  usedHexes: Set<string>
+  anchors: Color[],
+  styles: readonly WeddingStyleId[],
+  tone: StyleTone,
+  variant: number
 ): Color {
-  const priority = isWarm(hero) ? NEUTRAL_PRIORITY_WARM : NEUTRAL_PRIORITY_COOL;
-
-  for (const id of priority) {
-    const neutral = COLORS.find((c) => c.id === id);
-    if (neutral && !usedHexes.has(neutral.hex)) return neutral;
+  const deep = styles.includes("modern") || styles.includes("bold");
+  const candidates = neutralCandidates(colorToHsl(hero), { deep });
+  const start = (tone.lightShift <= -4 ? 1 : 0) + variant;
+  for (let i = 0; i < candidates.length; i += 1) {
+    const base = candidates[(start + i) % candidates.length];
+    // Richer styles carry more of the hue into the neutral; quieter ones less.
+    const hsl = { ...base, s: Math.min(40, base.s * tone.satScale) };
+    if (anchors.some((a) => isNearDuplicate(colorToHsl(a), hsl))) continue;
+    return colorFromHsl(hsl, "neutral", "neutral");
   }
-  const fallback = COLORS.find(
-    (c) => c.category === "neutral" && !usedHexes.has(c.hex)
+  const fallback = candidates[start % candidates.length];
+  return colorFromHsl(
+    { ...fallback, s: Math.min(40, fallback.s * tone.satScale) },
+    "neutral",
+    "neutral"
   );
-  return fallback ?? neutralFallback(hero);
 }
 
-/** Last-resort neutral generated in the base's temperature family. */
-function neutralFallback(hero: Color): Color {
-  return makeGeneratedColor(neutralTone(colorToHsl(hero)), "neutral");
+function metalTemperature(color: Color): MetalTemperature {
+  if (isAchromatic(color)) return "cool";
+  if (color.saturation >= 10 && hueDistance(color.hue, 335) < 40) return "pink";
+  return isWarm(color) ? "warm" : "cool";
 }
 
-function pickAccent(
+/** How many top-ranked metals reshuffling cycles through. */
+const METAL_SHORTLIST = 4;
+
+/**
+ * Metallic accent ranked against the palette's temperature and the chosen
+ * styles; reshuffling walks down the shortlist.
+ */
+function pickMetal(
   hero: Color,
-  secondary: Color | undefined,
-  usedHexes: Set<string>
-): Color | undefined {
-  const pinkish =
-    hero.saturation >= 10 &&
-    hueDistance(hero.hue, 335) < 40 &&
-    (secondary === undefined ||
-      (secondary.saturation >= 10 && hueDistance(secondary.hue, 335) < 60));
+  secondary: Color,
+  styles: readonly WeddingStyleId[],
+  variant: number
+): Color {
+  const heroTemp = metalTemperature(hero);
+  const secondaryTemp = metalTemperature(secondary);
+  const score = (metal: Metal) =>
+    (metal.temperature === heroTemp
+      ? 3
+      : heroTemp !== "cool" && metal.temperature !== "cool"
+        ? 1
+        : 0) +
+    (metal.temperature === secondaryTemp ? 1 : 0) +
+    2 * styles.filter((s) => metal.styles.includes(s)).length;
 
-  const order = pinkish
-    ? [ACCENT_ROSE, ACCENT_WARM_FALLBACK]
-    : isWarm(hero)
-      ? [ACCENT_WARM, ACCENT_WARM_FALLBACK]
-      : [ACCENT_COOL];
-
-  for (const id of order) {
-    const accent = COLORS.find((c) => c.id === id);
-    if (accent && !usedHexes.has(accent.hex)) return accent;
-  }
-  return undefined;
+  const shortlist = METALS.map((metal, index) => ({ metal, index, score: score(metal) }))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, METAL_SHORTLIST);
+  const { metal } = shortlist[variant % shortlist.length];
+  const hsl = hexToHsl(metal.hex);
+  return {
+    id: `metal-${metal.id}`,
+    name: metal.name,
+    hex: metal.hex,
+    hue: hsl.h,
+    saturation: hsl.s,
+    lightness: hsl.l,
+    category: "accent",
+  };
 }
 
 /* --------------------------------- Explainer ------------------------------- */
@@ -289,18 +378,32 @@ function explain(palette: Omit<Palette, "explanation">): string {
 
 /* -------------------------------- Entry point ------------------------------ */
 
+export type PaletteOptions = {
+  /** Wedding styles — shape every generated colour (never the user's picks). */
+  styles?: readonly WeddingStyleId[];
+  /** Reshuffle counter: 0 is the first option, each step another. */
+  variant?: number;
+};
+
 /**
- * Generate a wedding palette from one or more user-selected hex colours.
+ * Generate a wedding palette from the user's 1st (and optional 2nd) colour.
  *
  * User colours are anchors: they enter the palette exactly as chosen, in
- * order. Everything else is generated from the harmony engine over the full
- * colour space, softened by the wedding-adjustment layer, then balanced with
- * a curated neutral and metallic accent.
+ * order. Everything else is generated around them — supporting colours from
+ * harmony relationships with every pick, a neutral tinted from the lead
+ * colour, and a metallic ranked for the palette — all shaped by the chosen
+ * styles. `variant` deterministically selects alternative options.
  */
-export function generatePalette(colorInputs: string[]): Palette {
+export function generatePalette(
+  colorInputs: string[],
+  options: PaletteOptions = {}
+): Palette {
   if (colorInputs.length === 0) {
     throw new Error("At least one colour is required");
   }
+  const styles = options.styles ?? [];
+  const variant = Math.max(0, Math.floor(options.variant ?? 0));
+  const tone = toneFor(styles);
 
   // Dedupe while preserving input order (case-insensitive exact match).
   const seen = new Set<string>();
@@ -324,73 +427,75 @@ export function generatePalette(colorInputs: string[]): Palette {
     ? colorToHsl(hero)
     : { h: 40, s: 10, l: hero.lightness }; // all-neutral input plans from a warm stone tone
 
-  const mode: HarmonyName =
-    chromatic.length === 0
-      ? "monochromatic"
-      : chromatic.length === 1
-        ? DEFAULT_HARMONY
-        : classifyAnchors(chromatic.map(colorToHsl));
-
-  // Target ≈5 core colours including neutral + accent; extra anchors simply
-  // grow the palette instead of displacing anything.
-  const wantedSupporting = Math.max(0, Math.min(3, 5 - anchors.length - 2));
-
-  const plan = generateHarmony(baseHsl, mode);
-  const anchorHues = chromatic.map(colorToHsl).map((c) => c.h);
-
-  const supporting: Color[] = [];
-  for (const candidate of plan) {
-    if (supporting.length >= wantedSupporting) break;
-    if (anchorHues.some((hue) => hueDistance(hue, candidate.h) <= 16)) continue;
-
-    const depth = companionDepth(baseHsl, supporting.length);
-    const color = makeGeneratedColor({ h: candidate.h, ...depth }, "support");
-    if (usedHexes.has(color.hex)) continue;
-
-    usedHexes.add(color.hex);
-    supporting.push(color);
+  let mode: HarmonyName;
+  if (chromatic.length === 0) {
+    mode = "monochromatic";
+  } else if (chromatic.length === 1) {
+    const modes = singleAnchorModes(tone);
+    mode = modes[variant % modes.length];
+  } else {
+    // Two picks: their own relationship defines the harmony.
+    mode = classifyAnchors(chromatic.map(colorToHsl));
   }
 
-  // Anchors sharing one hue filter out every harmony candidate; fall back
-  // to depth variations of the base so the palette never runs thin.
+  // One pick: a generated secondary plus two supporting; two picks: two supporting.
+  const wantedSupporting = anchors.length === 1 ? 3 : 2;
+
+  const hues =
+    chromatic.length > 0 ? supportingHues(chromatic.map(colorToHsl), mode) : [];
+  const start = hues.length > 0 ? (variant * wantedSupporting) % hues.length : 0;
+
+  const supporting: Color[] = [];
+  const accept = (color: Color): void => {
+    if (usedHexes.has(color.hex)) return;
+    const hsl = colorToHsl(color);
+    if (anchors.some((a) => isNearDuplicate(colorToHsl(a), hsl))) return;
+    if (supporting.some((c) => isNearDuplicate(colorToHsl(c), hsl))) return;
+    usedHexes.add(color.hex);
+    supporting.push(color);
+  };
+
+  for (let i = 0; i < hues.length && supporting.length < wantedSupporting; i += 1) {
+    const depth = companionDepth(baseHsl, supporting.length + variant);
+    accept(makeGeneratedColor({ h: hues[(start + i) % hues.length], ...depth }, "support", tone));
+  }
+
+  // Neutral picks (or same-hue pairs) have no harmony hues to draw on; fall
+  // back to depth variations of the base so the palette never runs thin.
   if (supporting.length < wantedSupporting) {
-    for (const candidate of generateHarmony(baseHsl, "monochromatic")) {
-      if (supporting.length >= wantedSupporting) break;
-      const color = makeGeneratedColor(candidate, "support");
-      if (usedHexes.has(color.hex)) continue;
-      if (anchors.some((a) => isNearDuplicate(colorToHsl(a), candidate))) continue;
-      usedHexes.add(color.hex);
-      supporting.push(color);
+    const steps = generateHarmony(baseHsl, "monochromatic");
+    for (let i = 0; i < steps.length && supporting.length < wantedSupporting; i += 1) {
+      accept(makeGeneratedColor(steps[(variant + i) % steps.length], "support", tone));
     }
   }
 
-  // Secondary role: the next anchor when present, otherwise the first
+  // Secondary role: the user's 2nd colour when present, otherwise the first
   // generated supporting colour is promoted.
   const secondary =
     anchors.length >= 2
       ? anchors.find((a) => a.id !== hero.id)!
-      : (supporting.shift() ?? neutralFallback(hero));
+      : (supporting.shift() ??
+        makeGeneratedColor({ ...baseHsl, l: baseHsl.l >= 50 ? 32 : 72 }, "support", tone));
 
-  const neutral = pickNeutral(hero, usedHexes);
+  const neutral = pickNeutral(hero, anchors, styles, tone, variant);
   usedHexes.add(neutral.hex);
 
-  const accent =
-    chromatic.length === 0 ? undefined : pickAccent(hero, secondary, usedHexes);
-  if (accent) usedHexes.add(accent.hex);
+  const accent = pickMetal(hero, secondary, styles, variant);
+  usedHexes.add(accent.hex);
 
   const palette: Omit<Palette, "explanation"> = {
     hero,
     secondary,
     supporting,
     neutral,
-    ...(accent ? { accent } : {}),
+    accent,
     harmony: mode,
     anchors,
     additions: [
-      ...(secondary && !isAnchor(secondary, anchors) ? [secondary] : []),
+      ...(!isAnchor(secondary, anchors) ? [secondary] : []),
       ...supporting,
       neutral,
-      ...(accent ? [accent] : []),
+      accent,
     ],
   };
 

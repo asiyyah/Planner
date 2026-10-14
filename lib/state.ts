@@ -1,22 +1,31 @@
-import type { PlannerInputs, WeddingStyleId, WeddingTypeId } from "@/types";
+import type {
+  PlannerInputs,
+  Variants,
+  WeddingStyleId,
+  WeddingTypeId,
+} from "@/types";
 import { normalizeHex } from "@/lib/color/conversion";
 import {
   isCoordinationMode,
   isStyleId,
   isWeddingTypeId,
   MAX_COLORS,
+  MAX_VARIANT,
+  VARIANT_KEYS,
 } from "@/lib/constants";
 
 /**
  * Compact URL codec so a generated style guide is fully shareable via
  * /guide?d=… without any backend (PRD §9, §34-9).
  *
- * v3 format — dynamic colour list + multi-select wedding types:
- *   hex1,hex2,…|type1+type2|styles|coordination
+ * v4 format — colours, multi-select wedding types, optional reshuffles:
+ *   hex1,hex2|type1+type2|styles|coordination[|p.c.b.g.m.n.u]
+ * The fifth segment holds "another option" counters in VARIANT_KEYS order,
+ * dot-separated with trailing zeros trimmed; it is omitted when all are 0.
  *
- * Backward compatible: payloads with a single wedding type (v2, no "+")
- * and the legacy v1 format (color1|color2|type|styles|coordination)
- * still decode.
+ * Backward compatible: v3 (no fifth segment), v2 (a single wedding type)
+ * and the legacy v1 format (color1|color2|type|styles|coordination) still
+ * decode. Colours beyond MAX_COLORS are dropped.
  */
 
 /**
@@ -59,31 +68,61 @@ function parseTail(
   return { weddingTypes, styles, coordination };
 }
 
+/** Clamp an untrusted reshuffle counter to a small non-negative integer. */
+export function normalizeVariant(value: unknown): number {
+  const n = typeof value === "string" ? Number(value) : value;
+  if (typeof n !== "number" || !Number.isFinite(n) || n < 0) return 0;
+  return Math.min(MAX_VARIANT, Math.floor(n));
+}
+
+function encodeVariants(variants: Variants | undefined): string {
+  const counts = VARIANT_KEYS.map((key) => normalizeVariant(variants?.[key]));
+  while (counts.length > 0 && counts[counts.length - 1] === 0) counts.pop();
+  return counts.join(".");
+}
+
+/** Parse the dot-separated counters; anything malformed reads as 0. */
+function parseVariants(raw: string): Variants | undefined {
+  const variants: Variants = {};
+  raw.split(".").forEach((part, i) => {
+    const key = VARIANT_KEYS[i];
+    const value = normalizeVariant(part);
+    if (key && value > 0) variants[key] = value;
+  });
+  return Object.keys(variants).length > 0 ? variants : undefined;
+}
+
 export function encodeInputs(inputs: PlannerInputs): string {
-  const compact = [
+  const parts = [
     inputs.colors.map((hex) => hex.replace("#", "")).join(","),
     inputs.weddingTypes.join("+"),
     inputs.styles.join(","),
     inputs.coordination,
-  ].join("|");
-  return encodeURIComponent(compact);
+  ];
+  const variants = encodeVariants(inputs.variants);
+  if (variants) parts.push(variants);
+  return encodeURIComponent(parts.join("|"));
 }
 
 export function decodeInputs(raw: string): PlannerInputs | null {
   try {
     const parts = decodeURIComponent(raw).split("|");
 
-    if (parts.length === 4) {
-      const [colorsRaw, weddingTypesRaw, stylesRaw, coordination] = parts;
+    // v1 also has five segments, but ends in the coordination mode.
+    const legacy = parts.length === 5 && isCoordinationMode(parts[4]);
+
+    if (parts.length === 4 || (parts.length === 5 && !legacy)) {
+      const [colorsRaw, weddingTypesRaw, stylesRaw, coordination, variantsRaw] = parts;
       const colors = parseColorList(colorsRaw);
       if (!colors) return null;
       const tail = parseTail(weddingTypesRaw, stylesRaw, coordination);
       if (!tail) return null;
-      return { colors, ...tail };
+      const variants = variantsRaw ? parseVariants(variantsRaw) : undefined;
+      return { colors, ...tail, ...(variants ? { variants } : {}) };
     }
 
     // Legacy v1 payload: two fixed colour slots.
-    if (parts.length === 5) {
+    if (legacy) {
       const [color1, color2, weddingType, stylesRaw, coordination] = parts;
       const first = normalizeHex(color1);
       if (!first) return null;

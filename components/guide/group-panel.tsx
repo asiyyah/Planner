@@ -1,5 +1,6 @@
 import type { StylingRecommendation } from "@/types";
 import { ColorCard } from "@/components/swatch/color-card";
+import { ShuffleLink } from "./shuffle-link";
 
 /**
  * Editorial lookbook panel for one wedding group (PRD §24, §28).
@@ -7,17 +8,22 @@ import { ColorCard } from "@/components/swatch/color-card";
 export function GroupPanel({
   number,
   recommendation,
+  shuffleHref,
 }: {
   number: string;
   recommendation: StylingRecommendation;
+  shuffleHref: string;
 }) {
   return (
     <article className="flex h-full flex-col border border-black bg-white">
       <header className="flex items-baseline justify-between border-b border-black px-6 py-4">
         <span className="font-mono text-sm text-neutral-500">{number}</span>
-        <h2 className="text-xs uppercase tracking-[0.25em]">
-          {recommendation.title}
-        </h2>
+        <div className="flex items-baseline gap-4">
+          <ShuffleLink href={shuffleHref} section={recommendation.title} />
+          <h2 className="text-xs uppercase tracking-[0.25em]">
+            {recommendation.title}
+          </h2>
+        </div>
       </header>
 
       <div className="flex flex-1 flex-col gap-5 p-6">

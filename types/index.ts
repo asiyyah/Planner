@@ -73,9 +73,22 @@ export type WeddingStyleId =
 
 export type CoordinationMode = "same" | "different";
 
+/** Guide sections that support "Give me another option". */
+export type VariantKey =
+  | "palette"
+  | "couple"
+  | "bridesmaids"
+  | "groomsmen"
+  | "brideFamily"
+  | "groomFamily"
+  | "guests";
+
+/** Reshuffle counter per section; missing or 0 means the first option. */
+export type Variants = Partial<Record<VariantKey, number>>;
+
 export type PlannerInputs = {
   /**
-   * Dynamic colour selection — one or more user-chosen hex values.
+   * The user's 1st and (optional) 2nd colour — any hex values.
    * Colours are anchors: the engine builds the harmony around them.
    */
   colors: string[];
@@ -86,6 +99,8 @@ export type PlannerInputs = {
   weddingTypes: WeddingTypeId[];
   styles: WeddingStyleId[];
   coordination: CoordinationMode;
+  /** Which alternative each section shows; omitted when all are 0. */
+  variants?: Variants;
 };
 
 /* ------------------------------- Styling output ---------------------------- */

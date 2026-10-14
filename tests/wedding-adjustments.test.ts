@@ -4,7 +4,8 @@ import {
   companionDepth,
   isWeddingFriendly,
   MAX_WEDDING_SATURATION,
-  neutralTone,
+  neutralCandidates,
+  toneFor,
 } from "@/lib/color/wedding-adjustments";
 
 describe("wedding adjustments (iteration §13)", () => {
@@ -47,13 +48,21 @@ describe("wedding adjustments (iteration §13)", () => {
     expect(light.l).toBeLessThan(55);
   });
 
-  it("suggests warm neutrals for warm palettes and cool ones for cool", () => {
-    const warm = neutralTone({ h: 30, s: 50, l: 40 });
-    expect(warm.h).toBeGreaterThan(0);
-    expect(warm.h).toBeLessThanOrEqual(70);
-    const cool = neutralTone({ h: 220, s: 50, l: 40 });
-    expect(cool.h).toBeGreaterThanOrEqual(180);
-    expect(cool.l).toBeGreaterThan(90);
+  it("derives neutrals from the user's hue rather than a fixed list", () => {
+    const fromRust = neutralCandidates({ h: 20, s: 50, l: 40 });
+    const fromTeal = neutralCandidates({ h: 190, s: 50, l: 40 });
+    expect(fromRust.every((n) => n.h === 20)).toBe(true);
+    expect(fromTeal.every((n) => n.h === 190)).toBe(true);
+    // Gently tinted, lightest first.
+    expect(fromRust[0].l).toBeGreaterThan(90);
+    expect(fromRust[0].s).toBeLessThan(35);
+    expect(neutralCandidates({ h: 20, s: 50, l: 40 }, { deep: true }).at(-1)!.l).toBeLessThan(30);
+  });
+
+  it("blends style tones: bold is richer than minimal", () => {
+    expect(toneFor(["bold"]).satScale).toBeGreaterThan(toneFor(["minimal"]).satScale);
+    expect(toneFor(["bold"]).maxSat).toBeGreaterThan(MAX_WEDDING_SATURATION);
+    expect(toneFor([])).toEqual({ satScale: 1, lightShift: 0, maxSat: MAX_WEDDING_SATURATION });
   });
 
   it("verifies friendliness honestly", () => {

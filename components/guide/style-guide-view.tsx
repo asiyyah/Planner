@@ -1,4 +1,5 @@
-import type { StyleGuide } from "@/types";
+import type { StyleGuide, VariantKey } from "@/types";
+import { encodeInputs } from "@/lib/state";
 import { ColorSwatch } from "@/components/swatch/color-swatch";
 import { CouplePanel } from "./couple-panel";
 import { GroupPanel } from "./group-panel";
@@ -6,9 +7,16 @@ import { GuestsPanel } from "./guests-panel";
 import { DecorSection } from "./decor-section";
 import { GuideActions } from "./guide-actions";
 import { HARMONIES } from "@/data/harmonies";
+import { ShuffleLink } from "./shuffle-link";
 
 export function StyleGuideView({ guide }: { guide: StyleGuide }) {
-  const { palette } = guide;
+  const { palette, inputs } = guide;
+
+  /** The same guide with one section's reshuffle counter advanced. */
+  const shuffleHref = (key: VariantKey) => {
+    const variants = { ...inputs.variants, [key]: (inputs.variants?.[key] ?? 0) + 1 };
+    return `/guide?d=${encodeInputs({ ...inputs, variants })}`;
+  };
 
   const anchorNames = palette.anchors.map((c) => c.name);
 
@@ -110,13 +118,14 @@ export function StyleGuideView({ guide }: { guide: StyleGuide }) {
           </div>
 
           <div>
-            <div className="flex items-baseline justify-between">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h3 className="text-[10px] uppercase tracking-widest text-neutral-500">
                 We added
               </h3>
               <p className="text-xs text-neutral-500">
-                Supporting colours to complete your palette
+                Supporting colours to complete your palette — yours always stay
               </p>
+              <ShuffleLink href={shuffleHref("palette")} section="the palette" />
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               {weAdded.map(({ color, role }) => (
@@ -142,18 +151,42 @@ export function StyleGuideView({ guide }: { guide: StyleGuide }) {
         />
         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="md:col-span-2 xl:col-span-3">
-            <CouplePanel number="02" couple={guide.couple} />
+            <CouplePanel
+              number="02"
+              couple={guide.couple}
+              shuffleHref={shuffleHref("couple")}
+            />
           </div>
-          <GroupPanel number="03" recommendation={guide.bridesmaids} />
-          <GroupPanel number="04" recommendation={guide.groomsmen} />
-          <GroupPanel number="05" recommendation={guide.brideFamily} />
-          <GroupPanel number="06" recommendation={guide.groomFamily} />
+          <GroupPanel
+            number="03"
+            recommendation={guide.bridesmaids}
+            shuffleHref={shuffleHref("bridesmaids")}
+          />
+          <GroupPanel
+            number="04"
+            recommendation={guide.groomsmen}
+            shuffleHref={shuffleHref("groomsmen")}
+          />
+          <GroupPanel
+            number="05"
+            recommendation={guide.brideFamily}
+            shuffleHref={shuffleHref("brideFamily")}
+          />
+          <GroupPanel
+            number="06"
+            recommendation={guide.groomFamily}
+            shuffleHref={shuffleHref("groomFamily")}
+          />
         </div>
       </section>
 
       {/* ------------------------------- Guests ------------------------------ */}
       <section aria-labelledby="guests">
-        <GuestsPanel number="07" guests={guide.guests} />
+        <GuestsPanel
+          number="07"
+          guests={guide.guests}
+          shuffleHref={shuffleHref("guests")}
+        />
       </section>
 
       {/* -------------------------------- Decor ------------------------------ */}

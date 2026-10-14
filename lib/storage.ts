@@ -2,12 +2,18 @@ import type {
   CoordinationMode,
   PlannerInputs,
   SavedGuide,
+  Variants,
   WeddingStyleId,
   WeddingTypeId,
 } from "@/types";
 import { normalizeHex } from "@/lib/color/conversion";
-import { isStyleId, isWeddingTypeId, MAX_COLORS } from "@/lib/constants";
-import { encodeInputs } from "@/lib/state";
+import {
+  isStyleId,
+  isWeddingTypeId,
+  MAX_COLORS,
+  VARIANT_KEYS,
+} from "@/lib/constants";
+import { encodeInputs, normalizeVariant } from "@/lib/state";
 
 const STORAGE_KEY = "wp.saved-guides";
 /** Unparseable payloads are copied here before being replaced, never lost. */
@@ -65,16 +71,29 @@ function normalizeStyles(inputs: UnknownRecord): WeddingStyleId[] {
   return [...new Set(inputs.styles.filter(isStyleId))];
 }
 
+function normalizeVariants(inputs: UnknownRecord): Variants | undefined {
+  if (!isRecord(inputs.variants)) return undefined;
+  const raw = inputs.variants;
+  const variants: Variants = {};
+  for (const key of VARIANT_KEYS) {
+    const value = normalizeVariant(raw[key]);
+    if (value > 0) variants[key] = value;
+  }
+  return Object.keys(variants).length > 0 ? variants : undefined;
+}
+
 function normalizeInputs(inputs: UnknownRecord): PlannerInputs | null {
   const colors = normalizeColors(inputs);
   if (colors.length === 0) return null;
   const coordination: CoordinationMode =
     inputs.coordination === "same" ? "same" : "different";
+  const variants = normalizeVariants(inputs);
   return {
     colors,
     weddingTypes: normalizeWeddingTypes(inputs),
     styles: normalizeStyles(inputs),
     coordination,
+    ...(variants ? { variants } : {}),
   };
 }
 
