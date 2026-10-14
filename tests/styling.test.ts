@@ -392,3 +392,44 @@ describe("styling engine — style tone, derived roles and reshuffles", () => {
     }
   });
 });
+
+describe("couple looks — independent reshuffles", () => {
+  const lookHexes = (g: StyleGuide, i: 0 | 1) => g.couple.looks[i].colors.map((c) => c.hex);
+
+  it("does not automatically give Look 02 the user's 2nd colour", () => {
+    const g = generateStyleGuide(GOLDEN);
+    expect(g.couple.looks[1].colors[0].hex).not.toBe(GOLDEN.colors[1]);
+  });
+
+  it("still offers the user's 2nd colour for Look 02 among its options", () => {
+    const leads = new Set<string>();
+    for (let v = 0; v < 8; v += 1) {
+      leads.add(generateStyleGuide({ ...GOLDEN, variants: { lookTwo: v } }).couple.looks[1].colors[0].hex);
+    }
+    expect(leads.has(GOLDEN.colors[1])).toBe(true);
+  });
+
+  it("reshuffles Look 02 without touching Look 01", () => {
+    const first = generateStyleGuide(GOLDEN);
+    const next = generateStyleGuide({ ...GOLDEN, variants: { lookTwo: 1 } });
+    expect(lookHexes(next, 0)).toEqual(lookHexes(first, 0));
+    expect(lookHexes(next, 1)).not.toEqual(lookHexes(first, 1));
+  });
+
+  it("keeps Look 01 led by the user's 1st colour through its reshuffles", () => {
+    for (let v = 0; v < 5; v += 1) {
+      const g = generateStyleGuide({ ...GOLDEN, variants: { couple: v } });
+      expect(g.couple.looks[0].colors[0].hex).toBe(GOLDEN.colors[0]);
+      // The looks never share a colour.
+      expect(lookHexes(g, 1).some((h) => lookHexes(g, 0).includes(h))).toBe(false);
+    }
+  });
+
+  it("builds a full guide from four picks, keeping all of them", () => {
+    const colors = ["#5C4033", "#9CAF88", "#1F3A93", "#C9A227"];
+    const g = generateStyleGuide({ ...GOLDEN, colors });
+    expect(g.palette.anchors.map((c) => c.hex)).toEqual(colors);
+    expect(g.palette.supporting.length).toBeGreaterThan(0);
+    expect(g.bridesmaids.colors).toHaveLength(2);
+  });
+});

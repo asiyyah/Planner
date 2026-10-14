@@ -41,8 +41,8 @@ export const COORDINATION_MODES: readonly CoordinationMode[] = [
   "different",
 ];
 
-/** A 1st colour and an optional 2nd (PRD §8). */
-export const MAX_COLORS = 2;
+/** A 1st colour plus up to three more. */
+export const MAX_COLORS = 4;
 
 /** Reshuffle counters, in URL-codec order. Append only — order is part of links. */
 export const VARIANT_KEYS: readonly VariantKey[] = [
@@ -53,6 +53,7 @@ export const VARIANT_KEYS: readonly VariantKey[] = [
   "brideFamily",
   "groomFamily",
   "guests",
+  "lookTwo",
 ];
 
 /** Highest reshuffle counter accepted from a URL or saved entry. */

@@ -76,7 +76,10 @@ export type CoordinationMode = "same" | "different";
 /** Guide sections that support "Give me another option". */
 export type VariantKey =
   | "palette"
+  /** Couple Look 01 (its companion colour). */
   | "couple"
+  /** Couple Look 02 (its lead and companion colours). */
+  | "lookTwo"
   | "bridesmaids"
   | "groomsmen"
   | "brideFamily"
@@ -88,7 +91,7 @@ export type Variants = Partial<Record<VariantKey, number>>;
 
 export type PlannerInputs = {
   /**
-   * The user's 1st and (optional) 2nd colour — any hex values.
+   * The user's picks — 1 to MAX_COLORS hex values, anything goes.
    * Colours are anchors: the engine builds the harmony around them.
    */
   colors: string[];

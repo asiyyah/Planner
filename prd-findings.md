@@ -13,7 +13,7 @@
 | Area | State |
 | --- | --- |
 | Landing page (`/`) | Done — editorial hero, three-step explainer, "Start planning" CTAs |
-| Onboarding wizard (`/plan`) | Done — Colours (1st + optional 2nd) → Wedding Type → Style → Coordination → animated Reveal |
+| Onboarding wizard (`/plan`) | Done — Colours (1–4) → Wedding Type → Style → Coordination → animated Reveal |
 | Colour engine (`lib/color/*`) | Done, exceeds PRD §12 — 7 harmony modes, multi-anchor detection, wedding-tone muting |
 | Styling engine (`lib/styling/*`) | Done per §42 — couple, party, families, guests, decor from one shared `StylingContext` |
 | Style guide view (`/guide`) | Done per §24 — cover, 01 Colour Story, 02–06 group panels, 07 Guests, 08 Decor |
@@ -21,7 +21,7 @@
 | Saved dashboard (`/saved`) | Done — device-local list with rename/delete/reopen |
 | Accounts / backend / auth | Not built — deliberate (§38–39 upheld) |
 | Theme input, venue context, party sizes | Not built — gaps G1–G4 below |
-| Test coverage | 129 tests across 8 files (conversion, harmony, palette, wedding adjustments, group colours, state codec, storage, styling) — green; lint/tsc/build clean |
+| Test coverage | 134 tests across 8 files (conversion, harmony, palette, wedding adjustments, group colours, state codec, storage, styling) — green; lint/tsc/build clean |
 
 Stack in use: Next.js 16 · React 19 · TypeScript strict · Tailwind CSS v4 · shadcn-style Radix UI · Framer Motion · react-colorful · Vitest · no backend.
 
@@ -33,7 +33,7 @@ Stack in use: Next.js 16 · React 19 · TypeScript strict · Tailwind CSS v4 · 
 
 ```text
 Landing (/) → "Start planning"
-Step 1  Colours        free-form picker, a 1st colour and an optional 2nd
+Step 1  Colours        free-form picker, 1–4 colours (≥1 required)
 Step 2  Wedding type   traditional / white / traditional+white / civil / other
 Step 3  Wedding style  classic…luxury, multi-select
 Step 4  Coordination   same colours / different-but-coordinated (default: different)
@@ -44,7 +44,7 @@ Reveal                 choreographed palette animation (~5s, reduced-motion awar
 
 Implementation notes:
 
-* **Colour step** follows PRD §8: a 1st colour and an optional 2nd (`MAX_COLORS = 2`), any hex; each is preserved exactly in the output, never overwritten.
+* **Colour step** extends PRD §8's two colours to up to four (`MAX_COLORS = 4`), any hex; each is preserved exactly in the output, never overwritten.
 * **Picker** is a Figma-style anchored popover (`react-colorful`): saturation/lightness field, hue slider, HEX + RGB entry, native eyedropper where supported. Draft state discards on dismiss; only "Done" commits. No curated swatches inside the picker (Decision D2), no alpha channel (Decision D4).
 * **Harmony is chosen by the engine, not the user** (Decision D1): complementary / analogous / triadic / split-complementary / tetradic / square / monochromatic selected automatically from the anchors' relationships; the guide explains the choice in plain language (§13 requirement met).
 * Generated colours are shaped by the chosen styles (Bold richer, Minimal quieter) and then pass through a wedding-tone adjustment layer so they stay occasion-appropriate. The neutral and metallic are derived per palette, not fixed (see `docs/decisions.md`).
@@ -60,7 +60,7 @@ Implementation notes:
 | Guest guidance | **Done** — panel 07 with Recommended / Optional / Avoid swatch groups plus avoid-notes (§19 met) |
 | Decor grouped by category, tied to palette | **Done** — one palette-derived base/primary/secondary/accent assignment across ceremony, reception, tablescape, stage, florals, lighting, cake, signage (§23 met) |
 | Lock a colour, regenerate the rest | **Done** — picks are always locked; "Another option" on the palette regenerates everything added around them |
-| Restart a single role's suggestions | **Done** — "Another option" on the couple, bridesmaids, groomsmen, each family and guests; kept in the share link |
+| Restart a single role's suggestions | **Done** — "Another option" on couple Look 01 and Look 02, bridesmaids, groomsmen, each family and guests; kept in the share link |
 | Save to account | **Device-local only** — localStorage with rename/delete/reopen (§39 upheld; Supabase deferred) |
 | Export as shareable link | **Done** — compact URL codec v3 `hexes\|type+type\|styles\|coordination` (max 8 colours); v2 and legacy v1 links still decode |
 | Export as PDF lookbook | **Partial** — browser print pipeline with print-hidden chrome (Decision D6); no dedicated branded PDF |
@@ -118,6 +118,6 @@ Implementation notes:
 
 ## 6. Quality gates currently green
 
-* `npx vitest run` — 129/129 tests pass (colour conversion, harmony maths, palette generation, wedding adjustments, group colours, URL codec incl. legacy decode, storage migration, styling engine).
+* `npx vitest run` — 134/134 tests pass (colour conversion, harmony maths, palette generation, wedding adjustments, group colours, URL codec incl. legacy decode, storage migration, styling engine).
 * `npm run lint`, `npx tsc --noEmit`, `npm run build` — clean.
 * Golden-path smoke test: Coffee × Sage → analogous harmony → full guide renders; share link round-trips through the codec.

@@ -386,7 +386,7 @@ export type PaletteOptions = {
 };
 
 /**
- * Generate a wedding palette from the user's 1st (and optional 2nd) colour.
+ * Generate a wedding palette from the user's picks (1 to MAX_COLORS).
  *
  * User colours are anchors: they enter the palette exactly as chosen, in
  * order. Everything else is generated around them — supporting colours from
@@ -438,8 +438,9 @@ export function generatePalette(
     mode = classifyAnchors(chromatic.map(colorToHsl));
   }
 
-  // One pick: a generated secondary plus two supporting; two picks: two supporting.
-  const wantedSupporting = anchors.length === 1 ? 3 : 2;
+  // Aim for a 6–7 colour palette: one pick gets a generated secondary plus
+  // two supporting, two picks get two, three or more picks get one.
+  const wantedSupporting = anchors.length === 1 ? 3 : anchors.length === 2 ? 2 : 1;
 
   const hues =
     chromatic.length > 0 ? supportingHues(chromatic.map(colorToHsl), mode) : [];

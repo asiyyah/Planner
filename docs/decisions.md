@@ -11,9 +11,8 @@ surviving record of what they decided.
   anchor colours and explained in plain language (PRD §4, §13).
 - **D2 — No curated swatches inside the picker.** The 31-colour library is naming metadata; any
   picked hex gets a friendly name.
-- **D3 — A 1st colour and an optional 2nd** (PRD §8), any hex. One colour is enough — the engine
-  generates its partner. (An earlier iteration allowed up to 8; links carrying more than 2 now keep
-  the first two.)
+- **D3 — 1 to 4 colours**, any hex (PRD §8 asked for two; four gives couples more room). One colour
+  is enough — the engine generates its partners. Links carrying more than 4 keep the first four.
 - **D4 — Solid colours only** (`#RRGGBB`, no alpha).
 - **Wedding types are multi-select** (e.g. Traditional and White as separate events), unlike the
   single choice in PRD §9.
@@ -21,7 +20,7 @@ surviving record of what they decided.
 ## Palette generation
 
 - **Nothing is fixed.** Every generated colour derives from the user's picks:
-  - *Supporting colours* come from harmony relationships with **both** picks, not just the first.
+  - *Supporting colours* come from harmony relationships with **every** pick, not just the first.
   - *The neutral* is tinted from the lead colour (a cream, mist or stone carrying its hue), not
     chosen from a list of library neutrals.
   - *The metallic* is ranked from a wider set — gold, champagne gold, antique gold, bronze,
@@ -31,8 +30,8 @@ surviving record of what they decided.
 - **Style shapes colour.** Each style has a tone (`data/style-tones.ts`): Bold, Traditional and
   Luxury are richer and deeper; Romantic and Minimal softer and airier; several styles blend. For
   a single pick, the style also leads the harmony (rich styles start complementary).
-- **"Another option" everywhere.** Palette, couple, bridesmaids, groomsmen, each family and guests
-  can each be reshuffled. Counters live in the share link (codec v4), so a reshuffled guide is
+- **"Another option" everywhere.** Palette, couple Look 01, couple Look 02, bridesmaids,
+  groomsmen, each family and guests can each be reshuffled. Counters live in the share link (codec v4), so a reshuffled guide is
   shareable and saved as-is, and Back returns to the previous option. The user's picks never
   change.
 - **Reshuffles ripple forward, not back.** Groups never repeat each other's or the couple's
@@ -42,6 +41,10 @@ surviving record of what they decided.
 
 ## Output
 
+- **Couple looks.** Look 01 is always led by the user's 1st colour. Look 02 leads with one of the
+  palette's generated colours by default — the user's other picks are options it reaches on
+  reshuffle, not an automatic assignment. Reshuffling Look 01 can change Look 02 (the looks never
+  share a colour); reshuffling Look 02 never changes Look 01.
 - **Couple exclusivity.** The couple gets two distinct looks, and *every* colour they wear —
   including the palette's neutral and metallic accent — is exclusive to them. Bridesmaids,
   groomsmen, families and guests receive freshly derived colours that are never near-duplicates of

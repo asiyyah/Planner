@@ -154,7 +154,7 @@ export function StyleGuideView({ guide }: { guide: StyleGuide }) {
             <CouplePanel
               number="02"
               couple={guide.couple}
-              shuffleHref={shuffleHref("couple")}
+              shuffleHrefs={[shuffleHref("couple"), shuffleHref("lookTwo")]}
             />
           </div>
           <GroupPanel

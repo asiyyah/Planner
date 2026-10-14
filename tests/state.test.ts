@@ -19,12 +19,11 @@ describe("state codec — v3 (dynamic colours + multi-select types)", () => {
     expect(decodeInputs(encodeInputs(single))).toEqual(single);
   });
 
-  it("keeps only the first two colours (a 1st and optional 2nd)", () => {
-    const many = {
-      ...inputs,
-      colors: ["#5C4033", "#9CAF88", "#D4AF37", "#1F3A5F"],
-    };
-    expect(decodeInputs(encodeInputs(many))?.colors).toEqual(["#5C4033", "#9CAF88"]);
+  it("accepts up to four colours and drops any beyond that", () => {
+    const four = { ...inputs, colors: ["#5C4033", "#9CAF88", "#D4AF37", "#1F3A5F"] };
+    expect(decodeInputs(encodeInputs(four))).toEqual(four);
+    const five = { ...inputs, colors: [...four.colors, "#7D3C98"] };
+    expect(decodeInputs(encodeInputs(five))?.colors).toEqual(four.colors);
   });
 
   it("round-trips reshuffle counters and omits them when all are zero", () => {

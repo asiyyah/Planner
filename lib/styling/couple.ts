@@ -155,25 +155,31 @@ function uniqueColours(colours: (Color | undefined)[]): Color[] {
 export function buildCouple(ctx: StylingContext): CoupleBuild {
   const { palette, styles } = ctx;
 
-  const variant = variantOf(ctx, "couple");
+  // Each look reshuffles on its own; a new Look 01 ripples into Look 02 so
+  // the two never share a colour.
+  const lookOneVariant = variantOf(ctx, "couple");
+  const lookTwoVariant = variantOf(ctx, "lookTwo");
 
   const hero = palette.hero;
-  // Reshuffling rotates every pairing choice below.
   const lookOneOptions = uniqueColours([
     palette.accent,
     palette.neutral,
     ...palette.supporting,
   ]).filter((c) => c.hex !== hero.hex);
-  const lookOneCompanion = rotate(lookOneOptions, variant) ?? palette.neutral;
+  const lookOneCompanion = rotate(lookOneOptions, lookOneVariant) ?? palette.neutral;
 
+  // Look 02 leads with the palette's generated colours; the user's other
+  // picks remain options further along, so their 2nd colour is never forced
+  // onto Look 02 by default.
   const pool = uniqueColours([
-    palette.secondary,
-    ...palette.supporting,
+    ...palette.additions.filter(
+      (c) => c.hex !== palette.neutral.hex && c.hex !== palette.accent?.hex
+    ),
     ...palette.anchors.filter((a) => a.hex !== hero.hex),
   ]).filter((c) => c.hex !== lookOneCompanion.hex);
 
   const lookTwoPrimary =
-    rotate(distinctHues(hero, pool), variant) ??
+    rotate(distinctHues(hero, pool), lookTwoVariant) ??
     deriveLookTwoPrimary(hero, [hero.hex, lookOneCompanion.hex], ctx.tone);
 
   const remaining = uniqueColours([
@@ -185,7 +191,7 @@ export function buildCouple(ctx: StylingContext): CoupleBuild {
     (c) => c.hex !== lookTwoPrimary.hex && c.hex !== lookOneCompanion.hex && c.hex !== hero.hex
   );
   const lookTwoCompanion =
-    rotate(remaining, variant) ??
+    rotate(remaining, lookTwoVariant) ??
     deriveLookTwoPrimary(
       lookTwoPrimary,
       [hero.hex, lookOneCompanion.hex, lookTwoPrimary.hex],
