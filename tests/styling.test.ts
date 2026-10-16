@@ -433,3 +433,99 @@ describe("couple looks — independent reshuffles", () => {
     expect(g.bridesmaids.colors).toHaveLength(2);
   });
 });
+
+describe("group reshuffles are independent", () => {
+  const sections = (g: StyleGuide) => ({
+    couple: g.couple.looks.flatMap((l) => l.colors.map((c) => c.hex)),
+    bridesmaids: g.bridesmaids.colors.map((c) => c.hex),
+    groomsmen: g.groomsmen.colors.map((c) => c.hex),
+    brideFamily: g.brideFamily.colors.map((c) => c.hex),
+    groomFamily: g.groomFamily.colors.map((c) => c.hex),
+    guests: [...g.guests.recommended, ...g.guests.optional].map((c) => c.hex),
+  });
+  const GROUPS = ["bridesmaids", "groomsmen", "brideFamily", "groomFamily", "guests"] as const;
+
+  for (const key of GROUPS) {
+    it(`reshuffling ${key} changes no other section`, () => {
+      const before = sections(generateStyleGuide(GOLDEN));
+      for (let v = 1; v <= 5; v += 1) {
+        const after = sections(generateStyleGuide({ ...GOLDEN, variants: { [key]: v } }));
+        for (const other of Object.keys(before) as (keyof typeof before)[]) {
+          if (other !== key) expect(after[other]).toEqual(before[other]);
+        }
+      }
+    });
+  }
+
+  it("in same-colour mode, only the groomsmen follow a bridesmaid reshuffle", () => {
+    const same = { ...GOLDEN, coordination: "same" as const };
+    const before = sections(generateStyleGuide(same));
+    const after = sections(generateStyleGuide({ ...same, variants: { bridesmaids: 1 } }));
+    expect(after.groomsmen[0]).toBe(after.bridesmaids[0]);
+    expect(after.brideFamily).toEqual(before.brideFamily);
+    expect(after.groomFamily).toEqual(before.groomFamily);
+    expect(after.guests).toEqual(before.guests);
+  });
+
+  it("keeps guests' recommended and optional colours distinct from each other", () => {
+    const g = generateStyleGuide(GOLDEN);
+    const guests = [...g.guests.recommended, ...g.guests.optional].map((c) => c.hex);
+    for (let i = 0; i < guests.length; i += 1) {
+      for (let j = i + 1; j < guests.length; j += 1) {
+        expect(hexesNearDuplicate(guests[i], guests[j])).toBe(false);
+      }
+    }
+  });
+});
+
+describe("group roles — party around the couple, families and guests from the palette", () => {
+  const GROUP_LISTS = (g: StyleGuide) => [
+    g.bridesmaids.colors,
+    g.groomsmen.colors,
+    g.brideFamily.colors,
+    g.groomFamily.colors,
+    [...g.guests.recommended, ...g.guests.optional],
+  ].map((list) => list.map((c) => c.hex));
+
+  for (const coordination of ["same", "different"] as const) {
+    it(`keeps every group distinct on first load (${coordination})`, () => {
+      const lists = GROUP_LISTS(generateStyleGuide({ ...GOLDEN, coordination }));
+      for (let a = 0; a < lists.length; a += 1) {
+        for (let b = a + 1; b < lists.length; b += 1) {
+          for (const x of lists[a]) {
+            for (const y of lists[b]) {
+              // Same mode shares exactly one colour between bridesmaids and groomsmen.
+              if (coordination === "same" && a === 0 && b === 1 && x === y) continue;
+              expect(hexesNearDuplicate(x, y)).toBe(false);
+            }
+          }
+        }
+      }
+    });
+  }
+
+  it("builds the wedding party around the couple's colours", () => {
+    const g = generateStyleGuide(GOLDEN);
+    const coupleHues = g.couple.looks
+      .flatMap((l) => l.colors)
+      .map((c) => hexToHsl(c.hex))
+      .filter((hsl) => hsl.s >= 8)
+      .map((hsl) => hsl.h);
+    const lead = hexToHsl(g.bridesmaids.colors[0].hex).h;
+    const nearest = Math.min(...coupleHues.map((h) => Math.min(Math.abs(h - lead), 360 - Math.abs(h - lead))));
+    expect(nearest).toBeLessThanOrEqual(30);
+  });
+
+  it("uses one reshuffle for the whole party in same-colour mode", () => {
+    const same = { ...GOLDEN, coordination: "same" as const };
+    const base = generateStyleGuide(same);
+    // The groomsmen counter has no effect on its own…
+    const colours = (g: StyleGuide) => [g.bridesmaids.colors, g.groomsmen.colors];
+    expect(colours(generateStyleGuide({ ...same, variants: { groomsmen: 3 } }))).toEqual(colours(base));
+    // …while the party counter moves both panels together.
+    const next = generateStyleGuide({ ...same, variants: { bridesmaids: 1 } });
+    expect(next.bridesmaids.colors).not.toEqual(base.bridesmaids.colors);
+    expect(next.groomsmen.colors).not.toEqual(base.groomsmen.colors);
+    expect(next.groomsmen.colors[0]).toEqual(next.bridesmaids.colors[0]);
+  });
+});

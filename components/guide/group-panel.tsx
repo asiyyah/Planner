@@ -9,17 +9,20 @@ export function GroupPanel({
   number,
   recommendation,
   shuffleHref,
+  shuffleSection = recommendation.title,
 }: {
   number: string;
   recommendation: StylingRecommendation;
-  shuffleHref: string;
+  /** Omitted when another panel's button reshuffles this one. */
+  shuffleHref?: string;
+  shuffleSection?: string;
 }) {
   return (
     <article className="flex h-full flex-col border border-black bg-white">
       <header className="flex items-baseline justify-between border-b border-black px-6 py-4">
         <span className="font-mono text-sm text-neutral-500">{number}</span>
         <div className="flex items-baseline gap-4">
-          <ShuffleLink href={shuffleHref} section={recommendation.title} />
+          {shuffleHref ? <ShuffleLink href={shuffleHref} section={shuffleSection} /> : null}
           <h2 className="text-xs uppercase tracking-[0.25em]">
             {recommendation.title}
           </h2>

@@ -1,11 +1,7 @@
 import type { Color, ColorRef, GuestGuide } from "@/types";
 import { describeColor, hexesNearDuplicate } from "@/lib/color/palette";
-import { type StylingContext, variantOf } from "./context";
-import {
-  BRIDAL_WHITES,
-  ColourLedger,
-  generateGroupColours,
-} from "./group-colors";
+import { type StylingContext } from "./context";
+import { BRIDAL_WHITES, type ColourLedger } from "./group-colors";
 
 /** Couple colours shown on the avoid list before the bridal whites. */
 const MAX_COUPLE_AVOID = 4;
@@ -18,13 +14,16 @@ const MAX_COUPLE_AVOID = 4;
  * into the avoid list. White weddings also reserve white and ivory for the
  * bride.
  */
-export function buildGuests(ctx: StylingContext, ledger: ColourLedger): GuestGuide {
-  // The couple claims first, so the head of the ledger is the couple's colours.
-  const coupleHexes = ledger.taken.slice(0, MAX_COUPLE_AVOID);
+export function buildGuests(
+  ctx: StylingContext,
+  coupleLedger: ColourLedger,
+  guestColours: Color[]
+): GuestGuide {
+  const coupleHexes = coupleLedger.taken.slice(0, MAX_COUPLE_AVOID);
 
-  const options = { tone: ctx.tone, variant: variantOf(ctx, "guests") };
-  const recommended: Color[] = generateGroupColours(ctx.palette, "guests", ledger, 3, options);
-  const optional: Color[] = generateGroupColours(ctx.palette, "guests", ledger, 2, options);
+  // One distinct set of five, split into recommended and optional.
+  const recommended = guestColours.slice(0, 3);
+  const optional = guestColours.slice(3);
 
   const avoid: ColorRef[] = coupleHexes.map((hex) => ({
     name: nameFor(ctx, hex),
@@ -50,7 +49,6 @@ export function buildGuests(ctx: StylingContext, ledger: ColourLedger): GuestGui
       "These colours are reserved for the couple's looks",
       ...(whiteWedding ? ["White and ivory are traditionally kept for the bride"] : []),
       "Very bright or neon shades can fight a coordinated palette",
-      "Colours reserved for specific wedding-party groups",
     ],
     notes:
       "A colour guide rather than a dress code — guests could choose whichever of these feels closest to their wardrobe.",

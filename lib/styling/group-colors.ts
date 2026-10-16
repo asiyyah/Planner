@@ -112,13 +112,20 @@ function seedHues(palette: Palette): number[] {
 }
 
 export class ColourLedger {
-  /** Hexes already spoken for: couple-assigned plus prior groups' picks. */
+  /** Hexes no group may wear (near-)duplicates of: the couple's colours. */
   readonly taken: string[] = [];
 
   claim(hexes: string[]): void {
     for (const hex of hexes) {
       if (!this.taken.includes(hex)) this.taken.push(hex);
     }
+  }
+
+  /** A copy that additionally excludes `hexes` — this ledger is unchanged. */
+  with(hexes: string[]): ColourLedger {
+    const copy = new ColourLedger();
+    copy.claim([...this.taken, ...hexes]);
+    return copy;
   }
 
   isTaken(hex: string): boolean {
@@ -135,6 +142,8 @@ export type GroupColourOptions = {
   variant?: number;
   /** Style tone shaping saturation and depth. */
   tone?: StyleTone;
+  /** Hues to build around first (e.g. the couple's); palette hues follow. */
+  leadHues?: number[];
 };
 
 /** Lightness steps the widening sweep explores, deep to pale. */
@@ -164,11 +173,43 @@ function selectWindow(
   return { picks, next: pool.length > 0 ? (start + i) % pool.length : 0 };
 }
 
+/** Pool size, in multiples of `count`, the widening sweep aims for. */
+const MIN_ALTERNATIVES = 3;
+
+const sameSet = (a: Hsl[], b: Hsl[]) => {
+  const hexes = new Set(a.map(hslToHex));
+  return b.length === a.length && b.every((c) => hexes.has(hslToHex(c)));
+};
+
+/**
+ * The set after `current`: ideally all-new colours, else a full set that
+ * differs by at least one colour. Stays put only when the pool holds no
+ * other complete set.
+ */
+function nextWindow(
+  pool: Hsl[],
+  count: number,
+  current: { picks: Hsl[]; next: number }
+): { picks: Hsl[]; next: number } {
+  const fresh = selectWindow(pool, count, current.next, new Set(current.picks.map(hslToHex)));
+  if (fresh.picks.length === count) return fresh;
+  for (let offset = 0; offset < pool.length; offset += 1) {
+    const candidate = selectWindow(pool, count, (current.next + offset) % pool.length, new Set());
+    if (candidate.picks.length === count && !sameSet(candidate.picks, current.picks)) {
+      return candidate;
+    }
+  }
+  return current;
+}
+
 /**
  * Generate `count` distinct colours for a non-couple group: harmonised with
  * the master palette, shaped for the group and the chosen styles, and
- * guaranteed clear of every ledger entry (the couple's exclusive colours
- * come first).
+ * guaranteed clear of every ledger entry (the couple's exclusive colours).
+ *
+ * Groups do not claim colours from one another, so each group's result
+ * depends only on the palette, the couple and its own reshuffle counter —
+ * reshuffling one group never changes another.
  *
  * Valid candidates are collected in a fixed relationship × depth order.
  * Variant 0 takes the first distinct set (closest to the theme); each later
@@ -200,7 +241,12 @@ export function generateGroupColours(
     pool.push(candidate);
   };
 
-  const seeds = seedHues(palette);
+  const seeds = [
+    ...new Set([
+      ...(options.leadHues ?? []).map(Math.round),
+      ...seedHues(palette),
+    ]),
+  ];
   for (const seed of seeds) {
     for (const relation of RELATIONSHIP_LADDER) {
       const baseHue = normalizeHue(seed + relation);
@@ -215,7 +261,16 @@ export function generateGroupColours(
   // quiet styles where soft tones crowd together): sweep the whole wheel at
   // the group's own depths, then across a full deep-to-pale lightness ladder,
   // until a full distinct set exists. Deterministic and bounded.
-  const fullSet = () => selectWindow(pool, count, 0, new Set()).picks.length >= count;
+  // Enough room for a full set plus at least one different set to
+  // reshuffle into.
+  const fullSet = () => {
+    const first = selectWindow(pool, count, 0, new Set());
+    return (
+      first.picks.length >= count &&
+      pool.length >= count * MIN_ALTERNATIVES &&
+      nextWindow(pool, count, first) !== first
+    );
+  };
   const WIDEN_DEPTHS = [
     ...recipes,
     ...WIDEN_LIGHTNESS.flatMap((l) => [{ s: 34, l }, { s: 52, l }]),
@@ -228,17 +283,13 @@ export function generateGroupColours(
   }
 
   let window = selectWindow(pool, count, 0, new Set());
-  for (let v = 1; v <= variant; v += 1) {
-    const previous = new Set(window.picks.map(hslToHex));
-    const next = selectWindow(pool, count, window.next, previous);
-    // Too few options left to avoid the last set entirely — allow overlap.
-    window = next.picks.length === count ? next : selectWindow(pool, count, window.next, new Set());
+  if (window.picks.length < count) {
+    // Truly crowded: show what exists rather than nothing.
+    return window.picks.map((hsl) => colorFromHsl(hsl, profile));
   }
-  // Which colours a walk keeps depends on where it starts; never let a
-  // reshuffle return a short set when the first (complete) one exists.
-  if (window.picks.length < count) window = selectWindow(pool, count, 0, new Set());
+  for (let v = 1; v <= variant; v += 1) {
+    window = nextWindow(pool, count, window);
+  }
 
-  const picks = window.picks.map((hsl) => colorFromHsl(hsl, profile));
-  ledger.claim(picks.map((c) => c.hex));
-  return picks;
+  return window.picks.map((hsl) => colorFromHsl(hsl, profile));
 }

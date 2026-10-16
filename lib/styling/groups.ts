@@ -1,17 +1,15 @@
 import type { Color, StylingRecommendation } from "@/types";
 import { selectFabrics, selectOutfits } from "./catalog";
-import { type StylingContext, variantOf } from "./context";
-import {
-  ColourLedger,
-  generateGroupColours,
-} from "./group-colors";
+import { type StylingContext } from "./context";
+import type { GroupColours } from "./group-assignment";
+import type { ColourLedger } from "./group-colors";
 
 /**
  * Wedding party + family recommendations (iteration 02).
  *
- * Colours come from the group generator — freshly derived from the master
- * palette's theme, shaped per group — and are checked against the ledger so
- * nothing assigned to the couple (or an earlier group) can appear here.
+ * Colours are assigned in `group-assignment.ts` (party built around the
+ * couple's colours, families around the wider palette); this module turns
+ * them into outfit, fabric and styling recommendations.
  */
 
 /**
@@ -36,14 +34,12 @@ function partyNotes(primary: Color | undefined, secondary: Color | undefined, sa
 /** Bridesmaids + groomsmen with coordination modes (PRD §14–17). */
 export function buildParty(
   ctx: StylingContext,
-  ledger: ColourLedger
+  ledger: ColourLedger,
+  colours: Pick<GroupColours, "bridesmaids" | "groomsmen">
 ): { bridesmaids: StylingRecommendation; groomsmen: StylingRecommendation } {
   const same = ctx.coordination === "same";
-
-  const bridesmaidColours = generateGroupColours(ctx.palette, "bridesmaids", ledger, 2, {
-    tone: ctx.tone,
-    variant: variantOf(ctx, "bridesmaids"),
-  });
+  const bridesmaidColours = colours.bridesmaids;
+  const groomsmanColours = colours.groomsmen;
   const bridesmaids: StylingRecommendation = {
     group: "bridesmaids",
     title: "Bridesmaids",
@@ -55,13 +51,6 @@ export function buildParty(
     ],
     notes: partyNotes(bridesmaidColours[0], bridesmaidColours[1], same),
   };
-
-  // Same-mode shares the bridesmaid primary; different-mode generates its own
-  // groomsmen direction — both always clear of the couple.
-  const groomsmenOptions = { tone: ctx.tone, variant: variantOf(ctx, "groomsmen") };
-  const groomsmanColours = same && bridesmaidColours[0]
-    ? [bridesmaidColours[0], ...generateGroupColours(ctx.palette, "groomsmen", ledger, 1, groomsmenOptions)]
-    : generateGroupColours(ctx.palette, "groomsmen", ledger, 2, groomsmenOptions);
 
   const groomsmen: StylingRecommendation = {
     group: "groomsmen",
@@ -83,12 +72,9 @@ export function buildParty(
 /** Bride's family + groom's family (PRD §18) with distinct generated identities. */
 export function buildFamilies(
   ctx: StylingContext,
-  ledger: ColourLedger
+  colours: Pick<GroupColours, "brideFamily" | "groomFamily">
 ): { brideFamily: StylingRecommendation; groomFamily: StylingRecommendation } {
-  const brideColours = generateGroupColours(ctx.palette, "bride-family", ledger, 2, {
-    tone: ctx.tone,
-    variant: variantOf(ctx, "brideFamily"),
-  });
+  const brideColours = colours.brideFamily;
   const brideFamily: StylingRecommendation = {
     group: "bride-family",
     title: "Bride's Family",
@@ -99,10 +85,7 @@ export function buildFamilies(
     notes: `An aso-ebi direction of its own — warm companions to the couple's colours rather than echoes of them.`,
   };
 
-  const groomColours = generateGroupColours(ctx.palette, "groom-family", ledger, 2, {
-    tone: ctx.tone,
-    variant: variantOf(ctx, "groomFamily"),
-  });
+  const groomColours = colours.groomFamily;
   const groomFamily: StylingRecommendation = {
     group: "groom-family",
     title: "Groom's Family",

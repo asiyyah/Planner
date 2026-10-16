@@ -21,7 +21,7 @@
 | Saved dashboard (`/saved`) | Done — device-local list with rename/delete/reopen |
 | Accounts / backend / auth | Not built — deliberate (§38–39 upheld) |
 | Theme input, venue context, party sizes | Not built — gaps G1–G4 below |
-| Test coverage | 134 tests across 8 files (conversion, harmony, palette, wedding adjustments, group colours, state codec, storage, styling) — green; lint/tsc/build clean |
+| Test coverage | 145 tests across 8 files (conversion, harmony, palette, wedding adjustments, group colours, state codec, storage, styling) — green; lint/tsc/build clean |
 
 Stack in use: Next.js 16 · React 19 · TypeScript strict · Tailwind CSS v4 · shadcn-style Radix UI · Framer Motion · react-colorful · Vitest · no backend.
 
@@ -118,6 +118,6 @@ Implementation notes:
 
 ## 6. Quality gates currently green
 
-* `npx vitest run` — 134/134 tests pass (colour conversion, harmony maths, palette generation, wedding adjustments, group colours, URL codec incl. legacy decode, storage migration, styling engine).
+* `npx vitest run` — 145/145 tests pass (colour conversion, harmony maths, palette generation, wedding adjustments, group colours, URL codec incl. legacy decode, storage migration, styling engine).
 * `npm run lint`, `npx tsc --noEmit`, `npm run build` — clean.
 * Golden-path smoke test: Coffee × Sage → analogous harmony → full guide renders; share link round-trips through the codec.

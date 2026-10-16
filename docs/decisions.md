@@ -30,14 +30,25 @@ surviving record of what they decided.
 - **Style shapes colour.** Each style has a tone (`data/style-tones.ts`): Bold, Traditional and
   Luxury are richer and deeper; Romantic and Minimal softer and airier; several styles blend. For
   a single pick, the style also leads the harmony (rich styles start complementary).
-- **"Another option" everywhere.** Palette, couple Look 01, couple Look 02, bridesmaids,
-  groomsmen, each family and guests can each be reshuffled. Counters live in the share link (codec v4), so a reshuffled guide is
-  shareable and saved as-is, and Back returns to the previous option. The user's picks never
-  change.
-- **Reshuffles ripple forward, not back.** Groups never repeat each other's or the couple's
-  colours, so reshuffling the couple (or the palette) recalculates the groups, and reshuffling a
-  group can shift a group later in line (party → families → guests) if it takes one of that
-  group's colours.
+- **Three groups, each built differently.**
+  - *Wedding party* (bridesmaids + groomsmen) is built around the **couple's colours**, so their
+    outfits complement the couple.
+  - *Families* (bride's + groom's) and *guests* are built from the wider palette.
+  - Every group avoids the couple's colours. Each also avoids the other groups' **first-option**
+    colours, so a freshly generated guide never repeats a colour across groups.
+- **"Another option" never moves another section.** Each section reshuffles on its own, because
+  groups avoid each other's first options, which never change, not their current ones. Rules:
+  - Palette and couple reshuffles recalculate everything after them (they are what the rest is
+    built from). Look 01 can nudge Look 02; Look 02 never changes Look 01.
+  - *"Same colours"* mode: one button reshuffles bridesmaids and groomsmen together as a matched
+    set (they share their lead colour).
+  - *"Different but coordinated"* mode: separate bridesmaid and groomsmen buttons, fully
+    independent.
+  - Families and guests: one button each, independent.
+  - Trade-off: reshuffling one section never creates a repeat, but after reshuffling two sections
+    they can occasionally land on similar shades (about 1 guide in 5 in testing).
+- Counters live in the share link (codec v4), so a reshuffled guide is shareable and saved as-is,
+  Back returns to the previous option, and the user's picks never change.
 
 ## Output
 

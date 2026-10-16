@@ -11,6 +11,8 @@ import { ShuffleLink } from "./shuffle-link";
 
 export function StyleGuideView({ guide }: { guide: StyleGuide }) {
   const { palette, inputs } = guide;
+  // "Same colours": bridesmaids and groomsmen are one matched set with one button.
+  const sameParty = inputs.coordination === "same";
 
   /** The same guide with one section's reshuffle counter advanced. */
   const shuffleHref = (key: VariantKey) => {
@@ -161,11 +163,12 @@ export function StyleGuideView({ guide }: { guide: StyleGuide }) {
             number="03"
             recommendation={guide.bridesmaids}
             shuffleHref={shuffleHref("bridesmaids")}
+            shuffleSection={sameParty ? "the wedding party" : "Bridesmaids"}
           />
           <GroupPanel
             number="04"
             recommendation={guide.groomsmen}
-            shuffleHref={shuffleHref("groomsmen")}
+            shuffleHref={sameParty ? undefined : shuffleHref("groomsmen")}
           />
           <GroupPanel
             number="05"

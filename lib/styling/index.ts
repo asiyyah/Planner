@@ -5,6 +5,7 @@ import type { PlannerInputs, StyleGuide } from "@/types";
 import type { StylingContext } from "./context";
 import { buildCouple } from "./couple";
 import { ColourLedger } from "./group-colors";
+import { assignGroupColours } from "./group-assignment";
 import { buildFamilies, buildParty } from "./groups";
 import { buildGuests } from "./guests";
 import { buildDecor } from "./decor";
@@ -47,13 +48,19 @@ export function generateStyleGuide(inputs: PlannerInputs): StyleGuide {
   // 1. The couple first — their looks claim exclusive colours.
   const { couple, assignedHexes } = buildCouple(ctx);
 
-  // 2. Every other group generates independently, excluding the couple.
+  // 2. Wedding party (around the couple's colours), families and guests —
+  //    each clear of the couple, and independent of one another's reshuffles.
   const ledger = new ColourLedger();
   ledger.claim(assignedHexes);
+  const colours = assignGroupColours(
+    ctx,
+    ledger,
+    couple.looks.flatMap((look) => look.colors)
+  );
 
-  const party = buildParty(ctx, ledger);
-  const families = buildFamilies(ctx, ledger);
-  const guests = buildGuests(ctx, ledger);
+  const party = buildParty(ctx, ledger, colours);
+  const families = buildFamilies(ctx, colours);
+  const guests = buildGuests(ctx, ledger, colours.guests);
 
   // 3. Decor stays tied to the master palette — the wedding's visual language.
   const decor = buildDecor(ctx);
