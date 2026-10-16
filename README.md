@@ -21,7 +21,7 @@ npx tsc --noEmit
 
 ```text
 /            landing
-/plan        wizard: colours (1–4) → wedding types → styles → coordination → reveal
+/plan        wizard: colours (1–4) → wedding types → [traditions] → styles → coordination → reveal
              (?d=<payload> prefills it — used by "Edit" and to survive refresh)
 /guide?d=…   server-rendered style guide, regenerated from the URL payload;
              "Regenerate" links advance one section's reshuffle counter
@@ -36,8 +36,8 @@ npx tsc --noEmit
   backward compatible with older links.
 - **`lib/storage.ts`** — saved guides with legacy migration and corrupt-data backup.
 - **`lib/constants.ts`** — canonical option IDs shared by everything above.
-- **`data/`** — colour names, metallics, style tones, fabrics, outfits, decor templates and option
-  copy.
+- **`data/`** — colour names, metallics, style tones, fabrics, outfits, cultural attire (draft,
+  reviewed in Notion), decor templates and option copy.
 
 The app runs on Next.js 16 — APIs differ from older versions; check `node_modules/next/dist/docs/`
 before changing framework code (see `AGENTS.md`).

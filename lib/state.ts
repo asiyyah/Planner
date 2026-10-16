@@ -1,5 +1,6 @@
 import type {
   PlannerInputs,
+  Traditions,
   Variants,
   WeddingStyleId,
   WeddingTypeId,
@@ -7,6 +8,7 @@ import type {
 import { normalizeHex } from "@/lib/color/conversion";
 import {
   isCoordinationMode,
+  isCultureId,
   isStyleId,
   isWeddingTypeId,
   MAX_COLORS,
@@ -18,10 +20,13 @@ import {
  * Compact URL codec so a generated style guide is fully shareable via
  * /guide?d=… without any backend (PRD §9, §34-9).
  *
- * v4 format — colours, multi-select wedding types, optional reshuffles:
- *   hex1,hex2|type1+type2|styles|coordination[|p.c.b.g.m.n.u]
- * The fifth segment holds "another option" counters in VARIANT_KEYS order,
- * dot-separated with trailing zeros trimmed; it is omitted when all are 0.
+ * v5 format — colours, multi-select wedding types, optional reshuffles and
+ * optional traditions:
+ *   hex1,hex2|type1+type2|styles|coordination[|p.c.b.g.m.n.u[|bride,groom,b]]
+ * The fifth segment holds "Regenerate" counters in VARIANT_KEYS order,
+ * dot-separated with trailing zeros trimmed (empty when all are 0). The
+ * sixth holds the bride's and groom's cultures and whose ceremony the
+ * couple's traditional look follows ("b" or "g"); it is omitted when unset.
  *
  * Backward compatible: v3 (no fifth segment), v2 (a single wedding type)
  * and the legacy v1 format (color1|color2|type|styles|coordination) still
@@ -92,6 +97,17 @@ function parseVariants(raw: string): Variants | undefined {
   return Object.keys(variants).length > 0 ? variants : undefined;
 }
 
+function encodeTraditions(traditions: Traditions): string {
+  return [traditions.bride, traditions.groom, traditions.ceremony === "groom" ? "g" : "b"].join(",");
+}
+
+/** Parse "bride,groom,b|g"; anything malformed reads as no traditions. */
+export function parseTraditions(raw: string): Traditions | undefined {
+  const [bride, groom, ceremony] = raw.split(",");
+  if (!isCultureId(bride) || !isCultureId(groom)) return undefined;
+  return { bride, groom, ceremony: ceremony === "g" ? "groom" : "bride" };
+}
+
 export function encodeInputs(inputs: PlannerInputs): string {
   const parts = [
     inputs.colors.map((hex) => hex.replace("#", "")).join(","),
@@ -100,7 +116,11 @@ export function encodeInputs(inputs: PlannerInputs): string {
     inputs.coordination,
   ];
   const variants = encodeVariants(inputs.variants);
-  if (variants) parts.push(variants);
+  if (inputs.traditions) {
+    parts.push(variants, encodeTraditions(inputs.traditions));
+  } else if (variants) {
+    parts.push(variants);
+  }
   return encodeURIComponent(parts.join("|"));
 }
 
@@ -111,14 +131,20 @@ export function decodeInputs(raw: string): PlannerInputs | null {
     // v1 also has five segments, but ends in the coordination mode.
     const legacy = parts.length === 5 && isCoordinationMode(parts[4]);
 
-    if (parts.length === 4 || (parts.length === 5 && !legacy)) {
-      const [colorsRaw, weddingTypesRaw, stylesRaw, coordination, variantsRaw] = parts;
+    if (parts.length === 4 || (parts.length === 5 && !legacy) || parts.length === 6) {
+      const [colorsRaw, weddingTypesRaw, stylesRaw, coordination, variantsRaw, traditionsRaw] = parts;
       const colors = parseColorList(colorsRaw);
       if (!colors) return null;
       const tail = parseTail(weddingTypesRaw, stylesRaw, coordination);
       if (!tail) return null;
       const variants = variantsRaw ? parseVariants(variantsRaw) : undefined;
-      return { colors, ...tail, ...(variants ? { variants } : {}) };
+      const traditions = traditionsRaw ? parseTraditions(traditionsRaw) : undefined;
+      return {
+        colors,
+        ...tail,
+        ...(variants ? { variants } : {}),
+        ...(traditions ? { traditions } : {}),
+      };
     }
 
     // Legacy v1 payload: two fixed colour slots.

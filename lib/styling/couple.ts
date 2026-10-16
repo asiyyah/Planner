@@ -1,4 +1,4 @@
-import type { Color, CoupleGuide, CoupleLook } from "@/types";
+import type { Color, CoupleGuide, CoupleLook, WeddingTypeId } from "@/types";
 import {
   hexToHsl,
   hueDistance,
@@ -17,7 +17,7 @@ import {
 } from "@/lib/color/palette";
 import { TRADITIONAL_TYPES } from "@/lib/constants";
 import { rankFabrics, rankOutfits } from "./catalog";
-import { type StylingContext, variantOf } from "./context";
+import { hasWesternEvent, type StylingContext, variantOf } from "./context";
 
 /**
  * The Couple Engine (iteration 02 §9–13, §19).
@@ -92,7 +92,10 @@ function allocateRankings(
 } {
   const biasFor = (preference: "traditional" | "contemporary") => {
     const tradType = ctx.weddingTypes.find((t) => TRADITIONAL_TYPES.includes(t));
-    const westernType = ctx.weddingTypes.find((t) => !TRADITIONAL_TYPES.includes(t));
+    // "Traditional + White" includes a white wedding, so its Western look is white.
+    const westernType =
+      ctx.weddingTypes.find((t) => !TRADITIONAL_TYPES.includes(t)) ??
+      (ctx.weddingTypes.includes("traditional-white") ? "white" : undefined);
     if (preference === "traditional") return tradType ?? westernType;
     return westernType ?? tradType;
   };
@@ -206,18 +209,53 @@ export function buildCouple(ctx: StylingContext): CoupleBuild {
   const mood = (primary: Color) =>
     isWarm(primary) ? "rich, warm" : "cooler, contemporary";
 
+  // A chosen culture shapes the traditional look(s): Look 01 when the wedding
+  // has a traditional ceremony, Look 02 too when there is no Western event.
+  const ceremony = ctx.traditions?.ceremony;
+  const traditionalLook = (option: 0 | 1) => {
+    if (!ceremony) return undefined;
+    const pick = (list: string[]) => list[option] ?? list[0];
+    const fabrics = [...new Set([...ceremony.bride.fabrics, ...ceremony.groom.fabrics])];
+    return {
+      outfits: [pick(ceremony.bride.outfits), pick(ceremony.groom.outfits)],
+      fabrics: fabrics.slice(option * 2, option * 2 + 2).length > 0
+        ? fabrics.slice(option * 2, option * 2 + 2)
+        : fabrics.slice(0, 2),
+      accessories: [...ceremony.bride.accessories.slice(0, 2), ...ceremony.groom.accessories.slice(0, 1)],
+      note: ` Inspired by ${ceremony.name} ${ceremony.ceremony} attire.`,
+    };
+  };
+  const tradOne = wantsTraditional ? traditionalLook(0) : undefined;
+  const tradTwo = !hasWesternEvent(ctx) ? traditionalLook(1) : undefined;
+  // With a cultural Look 01 and a Western event, Look 02 is the Western look
+  // (white wedding, civil…), chosen fresh rather than around Look 01's
+  // replaced suggestions.
+  const westernTypes: WeddingTypeId[] = ctx.weddingTypes
+    .filter((t) => t !== "traditional")
+    .map((t) => (t === "traditional-white" ? "white" : t));
+  const westernTwo =
+    tradOne && !tradTwo
+      ? {
+          outfits: (["female", "male"] as const)
+            .map((gender) => rankOutfits(gender, "couple", westernTypes, ctx.styles, westernTypes[0])[0])
+            .filter((o): o is string => Boolean(o)),
+          fabrics: rankFabrics("couple", westernTypes, ctx.styles, { kind: "contemporary" }).slice(0, 2),
+        }
+      : undefined;
+
   const lookOne: CoupleLook = {
     label: "Look 01",
     colors: [
       { name: hero.name, hex: hero.hex },
       { name: lookOneCompanion.name, hex: lookOneCompanion.hex },
     ],
-    outfits: allocation.lookOne.outfits,
-    fabrics: allocation.lookOne.fabrics,
+    outfits: tradOne?.outfits ?? allocation.lookOne.outfits,
+    fabrics: tradOne?.fabrics ?? allocation.lookOne.fabrics,
     accessories: [
       `${palette.accent?.name ?? lookOneCompanion.name} details could finish both outfits`,
+      ...(tradOne?.accessories ?? []),
     ],
-    notes: `Built around ${hero.name.toLowerCase()}, the deeper hero of your palette — ${mood(hero)} styling for the first look.`,
+    notes: `Built around ${hero.name.toLowerCase()}, the deeper hero of your palette — ${mood(hero)} styling for the first look.${tradOne?.note ?? ""}`,
   };
 
   const lookTwo: CoupleLook = {
@@ -226,12 +264,16 @@ export function buildCouple(ctx: StylingContext): CoupleBuild {
       { name: lookTwoPrimary.name, hex: lookTwoPrimary.hex },
       { name: lookTwoCompanion.name, hex: lookTwoCompanion.hex },
     ],
-    outfits: allocation.lookTwo.outfits.length > 0 ? allocation.lookTwo.outfits : allocation.lookOne.outfits,
-    fabrics: allocation.lookTwo.fabrics,
+    outfits:
+      tradTwo?.outfits ??
+      westernTwo?.outfits ??
+      (allocation.lookTwo.outfits.length > 0 ? allocation.lookTwo.outfits : allocation.lookOne.outfits),
+    fabrics: tradTwo?.fabrics ?? westernTwo?.fabrics ?? allocation.lookTwo.fabrics,
     accessories: [
       `${lookTwoCompanion.name} accents keep this second look connected to the first`,
+      ...(tradTwo?.accessories ?? []),
     ],
-    notes: `A ${mood(lookTwoPrimary)} interpretation pairing ${lookTwoPrimary.name.toLowerCase()} with ${lookTwoCompanion.name.toLowerCase()} — clearly part of the same wedding, unmistakably not the first look.`,
+    notes: `A ${mood(lookTwoPrimary)} interpretation pairing ${lookTwoPrimary.name.toLowerCase()} with ${lookTwoCompanion.name.toLowerCase()} — clearly part of the same wedding, unmistakably not the first look.${tradTwo?.note ?? ""}`,
   };
 
   const assignedHexes = [...new Set([...lookOne.colors, ...lookTwo.colors].map((c) => c.hex))];

@@ -42,8 +42,13 @@ surviving record of what they decided.
     colours, so a freshly generated guide never repeats a colour across groups.
 - **"Another option" never moves another section.** Each section reshuffles on its own, because
   groups avoid each other's first options, which never change, not their current ones. Rules:
-  - Palette and couple reshuffles recalculate everything after them (they are what the rest is
-    built from). Look 01 can nudge Look 02; Look 02 never changes Look 01.
+  - Regenerating a couple look regenerates the wedding party as a complete, matched set
+    (both bridesmaids and groomsmen get new colours built around the new couple colours), while
+    families and guests stay exactly as they were. Families and guests are worked out against the
+    couple's first options and stay clear of every palette colour a look could take; a clash
+    check swaps a single colour in the rare case a look gets a colour outside the palette.
+  - Regenerating the palette recalculates everything. Look 01 can nudge Look 02; Look 02 never
+    changes Look 01.
   - *"Same colours"* mode: one button reshuffles bridesmaids and groomsmen together as a matched
     set (they share their lead colour).
   - *"Different but coordinated"* mode: separate bridesmaid and groomsmen buttons, fully
@@ -53,6 +58,23 @@ surviving record of what they decided.
     they can occasionally land on similar shades (about 1 guide in 5 in testing).
 - Counters live in the share link (codec v4), so a reshuffled guide is shareable and saved as-is,
   Back returns to the previous option, and the user's picks never change.
+
+## Cultural traditions
+
+- **Traditional attire follows each family's culture.** When a traditional ceremony is chosen, the
+  wizard asks for the bride's side and the groom's side (Yoruba, Igbo, Hausa, Fulani, Edo, Ijaw,
+  Tiv, Efik, Ibibio, or General Nigerian) and, when they differ, whose ceremony it is.
+  - Bridesmaids and the bride's family follow the bride's side; groomsmen and the groom's family
+    follow the groom's side; the couple's traditional look follows the ceremony's side. With a
+    white or civil event too, the party also gets one Western option and Look 02 is the Western
+    look; with only a traditional ceremony, both looks are traditional.
+  - General Nigerian keeps the broad library. Weddings without a traditional ceremony ignore
+    traditions entirely.
+- **The data is a draft** (`data/cultures.ts`), transcribed from the Notion "Cultural Attire
+  Review" database built from web research. Entries stay `review: "draft"` until someone from that
+  culture approves them in Notion; the guide words them as inspiration ("Inspired by … traditions;
+  styles vary by family"). Known open questions (the Igbo red cap, coral beads, Fulani detail) are
+  tracked there — the Igbo groom is suggested the striped cap by default.
 
 ## Output
 

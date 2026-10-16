@@ -9,9 +9,11 @@ type StyleStepProps = {
   onChange: (value: WeddingStyleId[]) => void;
   onBack: () => void;
   onNext: () => void;
+  /** Position in the wizard (moves when the Traditions step is shown). */
+  stepNumber: number;
 };
 
-export function StyleStep({ value, onChange, onBack, onNext }: StyleStepProps) {
+export function StyleStep({ value, onChange, onBack, onNext, stepNumber }: StyleStepProps) {
   const toggle = (id: WeddingStyleId) => {
     onChange(
       value.includes(id) ? value.filter((v) => v !== id) : [...value, id]
@@ -24,7 +26,7 @@ export function StyleStep({ value, onChange, onBack, onNext }: StyleStepProps) {
 
       <div className="mt-10">
         <StepHeading
-          step="Step 03 — Wedding Style"
+          step={`Step ${String(stepNumber).padStart(2, "0")} — Wedding Style`}
           title="How do you want your wedding to feel?"
           supporting="Choose one, or a few. These preferences shape the outfit, fabric and decor suggestions."
         />

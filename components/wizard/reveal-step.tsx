@@ -8,6 +8,7 @@ import { generatePalette } from "@/lib/color/palette";
 import { encodeInputs } from "@/lib/state";
 import type {
   CoordinationMode,
+  Traditions,
   WeddingStyleId,
   WeddingTypeId,
 } from "@/types";
@@ -18,6 +19,7 @@ type RevealStepProps = {
   weddingTypes: WeddingTypeId[];
   styles: WeddingStyleId[];
   coordination: CoordinationMode;
+  traditions?: Traditions;
 };
 
 type Stage = "intro" | "harmony" | "reveal" | "ready";
@@ -27,6 +29,7 @@ export function RevealStep({
   weddingTypes,
   styles,
   coordination,
+  traditions,
 }: RevealStepProps) {
   const router = useRouter();
   const reducedMotion = useReducedMotion();
@@ -55,6 +58,7 @@ export function RevealStep({
     weddingTypes,
     styles,
     coordination,
+    ...(traditions ? { traditions } : {}),
   })}`;
 
   useEffect(() => {

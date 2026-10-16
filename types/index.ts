@@ -73,6 +73,30 @@ export type WeddingStyleId =
 
 export type CoordinationMode = "same" | "different";
 
+/** Cultural traditions a traditional ceremony can follow. */
+export type CultureId =
+  | "general"
+  | "yoruba"
+  | "igbo"
+  | "hausa"
+  | "fulani"
+  | "edo"
+  | "ijaw"
+  | "tiv"
+  | "efik"
+  | "ibibio";
+
+/**
+ * Whose traditions shape the traditional-ceremony attire. Only used when a
+ * traditional ceremony is part of the wedding.
+ */
+export type Traditions = {
+  bride: CultureId;
+  groom: CultureId;
+  /** Whose ceremony the couple's traditional look follows. */
+  ceremony: "bride" | "groom";
+};
+
 /** Guide sections that support "Give me another option". */
 export type VariantKey =
   | "palette"
@@ -104,6 +128,8 @@ export type PlannerInputs = {
   coordination: CoordinationMode;
   /** Which alternative each section shows; omitted when all are 0. */
   variants?: Variants;
+  /** Bride's and groom's cultural traditions (traditional ceremonies only). */
+  traditions?: Traditions;
 };
 
 /* ------------------------------- Styling output ---------------------------- */

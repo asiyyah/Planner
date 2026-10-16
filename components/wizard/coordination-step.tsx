@@ -28,6 +28,8 @@ type CoordinationStepProps = {
   onChange: (value: CoordinationMode) => void;
   onBack: () => void;
   onNext: () => void;
+  /** Position in the wizard (moves when the Traditions step is shown). */
+  stepNumber: number;
 };
 
 export function CoordinationStep({
@@ -35,6 +37,7 @@ export function CoordinationStep({
   onChange,
   onBack,
   onNext,
+  stepNumber,
 }: CoordinationStepProps) {
   return (
     <div>
@@ -42,7 +45,7 @@ export function CoordinationStep({
 
       <div className="mt-10">
         <StepHeading
-          step="Step 04 — Wedding Party"
+          step={`Step ${String(stepNumber).padStart(2, "0")} — Wedding Party`}
           title="How should your wedding party coordinate?"
         />
       </div>

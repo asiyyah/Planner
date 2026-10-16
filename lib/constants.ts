@@ -1,5 +1,6 @@
 import type {
   CoordinationMode,
+  CultureId,
   VariantKey,
   WeddingStyleId,
   WeddingTypeId,
@@ -40,6 +41,23 @@ export const COORDINATION_MODES: readonly CoordinationMode[] = [
   "same",
   "different",
 ];
+
+export const CULTURE_IDS: readonly CultureId[] = [
+  "general",
+  "yoruba",
+  "igbo",
+  "hausa",
+  "fulani",
+  "edo",
+  "ijaw",
+  "tiv",
+  "efik",
+  "ibibio",
+];
+
+export function isCultureId(value: unknown): value is CultureId {
+  return CULTURE_IDS.includes(value as CultureId);
+}
 
 /** A 1st colour plus up to three more. */
 export const MAX_COLORS = 4;

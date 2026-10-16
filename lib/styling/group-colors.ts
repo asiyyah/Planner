@@ -146,8 +146,8 @@ export type GroupColourOptions = {
   leadHues?: number[];
 };
 
-/** Lightness steps the widening sweep explores, deep to pale. */
-const WIDEN_LIGHTNESS = [28, 40, 52, 64, 76];
+/** Lightness steps the widening sweep may explore (tried nearest-first). */
+const WIDEN_LIGHTNESS = [28, 34, 40, 46, 52, 58, 64, 70, 76, 82];
 
 /** Reshuffles cycle after this many options per group. */
 const MAX_GROUP_VARIANTS = 64;
@@ -271,9 +271,16 @@ export function generateGroupColours(
       nextWindow(pool, count, first) !== first
     );
   };
+  // Stay close to the group's own character: lightness levels nearest its
+  // recipes come first (so bridesmaids stay soft rather than turning deep),
+  // at the group's own saturation and a slightly richer one.
+  const meanL = recipes.reduce((sum, r) => sum + r.l, 0) / recipes.length;
+  const meanS = recipes.reduce((sum, r) => sum + r.s, 0) / recipes.length;
   const WIDEN_DEPTHS = [
     ...recipes,
-    ...WIDEN_LIGHTNESS.flatMap((l) => [{ s: 34, l }, { s: 52, l }]),
+    ...[...WIDEN_LIGHTNESS]
+      .sort((a, b) => Math.abs(a - meanL) - Math.abs(b - meanL) || a - b)
+      .flatMap((l) => [{ s: meanS, l }, { s: meanS + 14, l }]),
   ];
   for (const recipe of WIDEN_DEPTHS) {
     if (fullSet()) break;

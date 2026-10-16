@@ -107,3 +107,25 @@ describe("state codec — malformed payloads", () => {
     expect(decodeInputs("5C4033||minimal|same")).toBeNull();
   });
 });
+
+describe("traditions in the share link", () => {
+  const withTraditions: PlannerInputs = {
+    colors: ["#5C4033", "#9CAF88"],
+    weddingTypes: ["traditional-white"],
+    styles: ["elegant"],
+    coordination: "different",
+    traditions: { bride: "yoruba", groom: "igbo", ceremony: "groom" },
+  };
+
+  it("round-trips traditions, with and without reshuffle counters", () => {
+    expect(decodeInputs(encodeInputs(withTraditions))).toEqual(withTraditions);
+    const shuffled = { ...withTraditions, variants: { couple: 2 } };
+    expect(decodeInputs(encodeInputs(shuffled))).toEqual(shuffled);
+  });
+
+  it("ignores malformed traditions instead of rejecting the link", () => {
+    const decoded = decodeInputs(encodeURIComponent("5C4033|traditional||different||klingon,igbo,b"));
+    expect(decoded?.colors).toEqual(["#5C4033"]);
+    expect(decoded?.traditions).toBeUndefined();
+  });
+});

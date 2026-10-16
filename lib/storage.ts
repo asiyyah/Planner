@@ -13,7 +13,7 @@ import {
   MAX_COLORS,
   VARIANT_KEYS,
 } from "@/lib/constants";
-import { encodeInputs, normalizeVariant } from "@/lib/state";
+import { encodeInputs, normalizeVariant, parseTraditions } from "@/lib/state";
 
 const STORAGE_KEY = "wp.saved-guides";
 /** Unparseable payloads are copied here before being replaced, never lost. */
@@ -88,12 +88,18 @@ function normalizeInputs(inputs: UnknownRecord): PlannerInputs | null {
   const coordination: CoordinationMode =
     inputs.coordination === "same" ? "same" : "different";
   const variants = normalizeVariants(inputs);
+  const traditions = isRecord(inputs.traditions)
+    ? parseTraditions(
+        [inputs.traditions.bride, inputs.traditions.groom, inputs.traditions.ceremony === "groom" ? "g" : "b"].join(",")
+      )
+    : undefined;
   return {
     colors,
     weddingTypes: normalizeWeddingTypes(inputs),
     styles: normalizeStyles(inputs),
     coordination,
     ...(variants ? { variants } : {}),
+    ...(traditions ? { traditions } : {}),
   };
 }
 

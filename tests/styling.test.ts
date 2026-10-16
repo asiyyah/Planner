@@ -529,3 +529,86 @@ describe("group roles — party around the couple, families and guests from the 
     expect(next.groomsmen.colors[0]).toEqual(next.bridesmaids.colors[0]);
   });
 });
+
+describe("regenerating a couple look", () => {
+  const hexes = (cs: { hex: string }[]) => cs.map((c) => c.hex);
+  const CASES: PlannerInputs[] = [
+    GOLDEN,
+    { ...GOLDEN, coordination: "same" },
+    { ...GOLDEN, colors: ["#2B56D0", "#3CB043"], weddingTypes: ["white"], styles: [] },
+    { ...GOLDEN, colors: ["#664AF3"], styles: ["romantic", "minimal"] },
+  ];
+
+  for (const inputs of CASES) {
+    for (const look of ["couple", "lookTwo"] as const) {
+      it(`${look} on ${inputs.colors.join("/")} (${inputs.coordination}): party all new, families and guests unchanged`, () => {
+        for (let v = 0; v < 4; v += 1) {
+          const before = generateStyleGuide({ ...inputs, variants: { [look]: v } });
+          const after = generateStyleGuide({ ...inputs, variants: { [look]: v + 1 } });
+          // The wedding party regenerates as a complete set…
+          for (const group of ["bridesmaids", "groomsmen"] as const) {
+            const was = hexes(before[group].colors);
+            expect(hexes(after[group].colors).some((h) => was.includes(h))).toBe(false);
+          }
+          // …while families and guests stay exactly as they were.
+          expect(after.brideFamily.colors).toEqual(before.brideFamily.colors);
+          expect(after.groomFamily.colors).toEqual(before.groomFamily.colors);
+          expect(after.guests.recommended).toEqual(before.guests.recommended);
+          expect(after.guests.optional).toEqual(before.guests.optional);
+        }
+      });
+    }
+  }
+});
+
+describe("traditional attire by culture", () => {
+  const TRAD: PlannerInputs = {
+    ...GOLDEN,
+    weddingTypes: ["traditional-white"],
+    traditions: { bride: "yoruba", groom: "igbo", ceremony: "bride" },
+  };
+
+  it("dresses each side in its own tradition", () => {
+    const g = generateStyleGuide(TRAD);
+    expect(g.bridesmaids.outfits[0]).toMatch(/iro and buba/i);
+    expect(g.brideFamily.outfits.join(" ")).toMatch(/aso-ebi/i);
+    expect(g.groomsmen.outfits[0]).toMatch(/isiagu/i);
+    expect(g.groomFamily.fabrics).toContain("Isiagu");
+    expect(g.brideFamily.notes).toMatch(/Inspired by Yoruba traditions/);
+  });
+
+  it("styles the couple's traditional look in the ceremony culture, Look 02 Western for a white wedding", () => {
+    const g = generateStyleGuide(TRAD);
+    expect(g.couple.looks[0].outfits.join(" ")).toMatch(/iro and buba/i);
+    expect(g.couple.looks[0].outfits.join(" ")).toMatch(/agbada/i);
+    expect(g.couple.looks[1].outfits).toContain("Bridal gown");
+    const groomsCeremony = generateStyleGuide({ ...TRAD, traditions: { ...TRAD.traditions!, ceremony: "groom" } });
+    expect(groomsCeremony.couple.looks[0].outfits.join(" ")).toMatch(/george wrapper/i);
+  });
+
+  it("keeps both couple looks traditional when there is no Western event", () => {
+    const g = generateStyleGuide({ ...TRAD, weddingTypes: ["traditional"] });
+    expect(g.couple.looks[1].outfits.join(" ")).not.toMatch(/gown ·|suit|tuxedo/i);
+    expect(g.couple.looks[1].outfits.join(" ")).toMatch(/aso-oke|buba/i);
+  });
+
+  it("ignores traditions for weddings without a traditional ceremony", () => {
+    const white = { ...TRAD, weddingTypes: ["white" as const] };
+    const without = { ...white, traditions: undefined };
+    const attire = (g: StyleGuide) => [g.couple, g.bridesmaids, g.groomsmen, g.brideFamily, g.groomFamily];
+    expect(attire(generateStyleGuide(white))).toEqual(attire(generateStyleGuide(without)));
+  });
+
+  it("keeps the broad library for General Nigerian", () => {
+    const general = generateStyleGuide({ ...TRAD, traditions: { bride: "general", groom: "general", ceremony: "bride" } });
+    const none = generateStyleGuide({ ...TRAD, traditions: undefined });
+    expect(general.bridesmaids.outfits).toEqual(none.bridesmaids.outfits);
+    expect(general.couple.looks[0].outfits).toEqual(none.couple.looks[0].outfits);
+  });
+
+  it("suggests modest styles for Hausa weddings", () => {
+    const g = generateStyleGuide({ ...TRAD, weddingTypes: ["traditional"], traditions: { bride: "hausa", groom: "hausa", ceremony: "bride" } });
+    expect(g.bridesmaids.outfits.join(" ")).toMatch(/headscarf|veil/i);
+    expect(g.couple.looks[0].accessories?.join(" ")).toMatch(/henna/i);
+  });
+});
