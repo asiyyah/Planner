@@ -40,14 +40,14 @@ export default function Home() {
             </p>
             <Link
               href="/plan"
-              className="mt-12 inline-block border border-black bg-black px-12 py-4 text-sm uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black"
+              className="mt-12 inline-block rounded border border-black bg-black px-12 py-4 text-sm uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black"
             >
               Start planning
             </Link>
           </div>
 
           {/* Editorial palette mock (interface stays black & white) */}
-          <div aria-hidden="true" className="hidden border border-black lg:block">
+          <div aria-hidden="true" className="hidden overflow-hidden rounded border border-black lg:block">
             <p className="border-b border-black px-6 py-3 font-mono text-[10px] uppercase tracking-widest text-neutral-500">
               Your style guide
             </p>
@@ -88,7 +88,7 @@ export default function Home() {
         <h2 className="font-heading text-3xl sm:text-4xl">
           Two inputs. One complete direction.
         </h2>
-        <ol className="mt-12 grid gap-px border border-black bg-black md:grid-cols-3">
+        <ol className="mt-12 grid gap-px overflow-hidden rounded border border-black bg-black md:grid-cols-3">
           {STEPS.map((step) => (
             <li key={step.number} className="bg-white p-8 sm:p-10">
               <span className="font-mono text-sm text-neutral-400">
@@ -104,14 +104,14 @@ export default function Home() {
           ))}
         </ol>
 
-        <div className="mt-14 flex flex-col items-start justify-between gap-6 border border-black p-8 sm:flex-row sm:items-center sm:p-10">
+        <div className="mt-14 flex flex-col items-start justify-between gap-6 rounded border border-black p-8 sm:flex-row sm:items-center sm:p-10">
           <p className="max-w-xl font-heading text-2xl leading-snug sm:text-3xl">
             &ldquo;I knew the colours I liked. I just didn&rsquo;t know what to
             do with them.&rdquo;
           </p>
           <Link
             href="/plan"
-            className="shrink-0 border border-black px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:bg-black hover:text-white"
+            className="shrink-0 rounded border border-black px-8 py-3 text-xs uppercase tracking-widest transition-colors hover:bg-black hover:text-white"
           >
             Start planning →
           </Link>

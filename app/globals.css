@@ -112,6 +112,7 @@
  */
 .option-card {
   border: 1px solid #000000;
+  border-radius: 0.25rem;
   background-color: #ffffff;
   color: #000000;
   cursor: pointer;
@@ -143,6 +144,82 @@
   background-color: var(--swatch-border);
   color: var(--muted-foreground);
   cursor: not-allowed;
+}
+
+/*
+ * Colour picker (react-colorful), Coolors-style: a large rounded shade
+ * field, a pill hue slider set apart from it, and ring handles.
+ */
+.colour-picker.react-colorful {
+  width: 100%;
+  height: auto;
+  gap: 1.25rem;
+}
+
+.colour-picker .react-colorful__saturation {
+  height: 12.5rem;
+  border-radius: 0.75rem;
+  border-bottom: none;
+}
+
+.colour-picker .react-colorful__hue {
+  height: 0.875rem;
+  border-radius: 9999px;
+}
+
+.colour-picker .react-colorful__last-control {
+  border-radius: 9999px;
+}
+
+.colour-picker .react-colorful__pointer {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 4px solid #ffffff;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.15), 0 2px 6px rgb(0 0 0 / 0.25);
+}
+
+/* The shade handle is a hollow ring; the hue handle shows the hue. */
+.colour-picker .react-colorful__saturation-pointer,
+.colour-picker .react-colorful__saturation-pointer .react-colorful__pointer-fill {
+  background-color: transparent !important;
+}
+
+.colour-picker .react-colorful__interactive:focus .react-colorful__pointer {
+  transform: translate(-50%, -50%) scale(1.15);
+}
+
+/* RGB channel sliders share the hue slider's pill look. */
+.rgb-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 0.875rem;
+  border-radius: 9999px;
+  cursor: pointer;
+}
+
+.rgb-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid rgb(0 0 0 / 0.2);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+}
+
+.rgb-slider::-moz-range-thumb {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid rgb(0 0 0 / 0.2);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
+}
+
+.rgb-slider:focus-visible {
+  outline: 2px solid #000000;
+  outline-offset: 3px;
 }
 
 @media print {

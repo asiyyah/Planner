@@ -86,7 +86,7 @@ export function WizardActions({
         onClick={onNext}
         disabled={nextDisabled}
         className={cn(
-          "border border-black px-8 py-3 text-sm uppercase tracking-widest transition-colors",
+          "rounded border border-black px-8 py-3 text-sm uppercase tracking-widest transition-colors",
           nextDisabled
             ? "cursor-not-allowed border-neutral-300 bg-white text-neutral-400"
             : "bg-black text-white hover:bg-white hover:text-black"

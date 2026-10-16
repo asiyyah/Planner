@@ -22,6 +22,29 @@ function fullPalette(palette: ReturnType<typeof generatePalette>): Color[] {
   ];
 }
 
+describe("naming variety", () => {
+  it("gives different colours varied names instead of a few repeated labels", () => {
+    // Deterministic pseudo-random colours spread over the whole colour space.
+    let seed = 42;
+    const next = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const counts = new Map<string, number>();
+    const total = 600;
+    for (let i = 0; i < total; i += 1) {
+      const hex = `#${Math.floor(next() * 0xffffff).toString(16).padStart(6, "0")}`;
+      const name = describeColor(hex, { allowMetals: false });
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    expect(counts.size).toBeGreaterThan(120);
+    // No single name dominates (the old 30-name library peaked above 12%).
+    expect(Math.max(...counts.values()) / total).toBeLessThan(0.06);
+  });
+
+  it("names nearby pinks differently and never calls a generated yellow Gold", () => {
+    expect(describeColor("#C08497")).not.toBe(describeColor("#E8A0B4"));
+    expect(describeColor("#E5B83B", { allowMetals: false })).not.toMatch(/Gold/);
+  });
+});
+
 describe("naming support (iteration §6)", () => {
   it("borrows library names for close colours only", () => {
     expect(describeColor(COFFEE)).toBe("Coffee Brown");

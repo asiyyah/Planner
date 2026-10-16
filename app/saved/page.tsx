@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const PRIMARY_BUTTON =
-  "border border-black bg-black px-5 py-2 text-xs uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black";
+  "rounded border border-black bg-black px-5 py-2 text-xs uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black";
 const QUIET_BUTTON =
   "px-4 py-2 text-xs uppercase tracking-widest text-neutral-500 hover:text-black";
 
@@ -59,7 +59,7 @@ export default function SavedPage() {
       <h1 className="mt-4 font-heading text-4xl sm:text-5xl">Your weddings</h1>
 
       {guides.length === 0 ? (
-        <div className="mt-12 border border-dashed border-black p-12 text-center">
+        <div className="mt-12 rounded border border-dashed border-black p-12 text-center">
           <p className="font-heading text-2xl">Nothing saved yet</p>
           <p className="mx-auto mt-3 max-w-sm text-sm text-neutral-600">
             Generate a style guide and save it here to revisit or share it
@@ -67,7 +67,7 @@ export default function SavedPage() {
           </p>
           <Link
             href="/plan"
-            className="mt-8 inline-block border border-black bg-black px-8 py-3 text-xs uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black"
+            className="mt-8 inline-block rounded border border-black bg-black px-8 py-3 text-xs uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black"
           >
             Start planning
           </Link>
@@ -169,7 +169,7 @@ function SavedCard({
   }, [entry.inputs]);
 
   return (
-    <li className="border border-black bg-white">
+    <li className="overflow-hidden rounded border border-black bg-white">
       <Link href={`/guide?d=${encoded}`} className="block">
         <span className="swatch-strip m-3 flex h-20" aria-hidden="true">
           {colors.map((c, i) => (

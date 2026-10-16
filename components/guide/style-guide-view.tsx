@@ -42,45 +42,39 @@ export function StyleGuideView({ guide }: { guide: StyleGuide }) {
   return (
     <div className="space-y-14 sm:space-y-20">
       {/* ------------------------------- Cover ------------------------------- */}
-      <header className="border border-black">
-        <div className="flex flex-col justify-between gap-10 p-8 sm:p-14 lg:flex-row lg:items-end">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-neutral-500">
-              Your Wedding
-            </p>
-            <h1 className="mt-6 font-heading text-5xl leading-none sm:text-7xl">
-              {anchorNames.length === 1 ? (
-                anchorNames[0]
-              ) : (
-                <>
-                  {anchorNames[0]}{" "}
-                  <span className="italic text-neutral-400">×</span>{" "}
-                  {anchorNames[1]}
-                </>
-              )}
-            </h1>
-            <p className="mt-6 max-w-sm text-neutral-600">
-              A coordinated wedding style guide — colours, outfits, fabrics and
-              decor in one direction.
-            </p>
-          </div>
-          <div className="shrink-0">
-            <GuideActions guide={guide} />
-          </div>
-        </div>
+      <header className="rounded border border-black p-8 sm:p-14">
+        <p className="text-xs uppercase tracking-[0.35em] text-neutral-500">
+          Your Wedding
+        </p>
+        <h1 className="mt-6 font-heading text-5xl leading-none sm:text-7xl">
+          {anchorNames.length === 1 ? (
+            anchorNames[0]
+          ) : (
+            <>
+              {anchorNames[0]} × {anchorNames[1]}
+            </>
+          )}
+        </h1>
+        <p className="mt-4 text-sm text-neutral-600">
+          A coordinated wedding style guide — colours, outfits, fabrics and
+          decor in one direction.
+        </p>
+
         {/* Palette strip */}
-        <div className="px-4 pb-4 sm:px-6 sm:pb-6">
-          <div className="swatch-strip flex h-16">
-            {stripColors.map((color, i) => (
-              <div
-                key={`${color.hex}-${i}`}
-                className="h-full min-w-0 flex-1"
-                style={{ backgroundColor: color.hex }}
-                role="img"
-                aria-label={color.name}
-              />
-            ))}
-          </div>
+        <div className="mt-8 flex h-12 overflow-hidden rounded-md ring-1 ring-inset ring-black/5">
+          {stripColors.map((color, i) => (
+            <div
+              key={`${color.hex}-${i}`}
+              className="h-full min-w-0 flex-1"
+              style={{ backgroundColor: color.hex }}
+              role="img"
+              aria-label={color.name}
+            />
+          ))}
+        </div>
+
+        <div className="mt-8">
+          <GuideActions guide={guide} />
         </div>
       </header>
 
@@ -88,7 +82,7 @@ export function StyleGuideView({ guide }: { guide: StyleGuide }) {
       <section aria-labelledby="colour-story">
         <SectionHeading number="01" id="colour-story" title="Colour Story" />
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_2fr]">
-          <div className="flex flex-col justify-between gap-6 border border-black p-6 sm:p-8">
+          <div className="flex flex-col justify-between gap-6 rounded border border-black p-6 sm:p-8">
             <div>
               <h3 className="text-[10px] uppercase tracking-widest text-neutral-500">
                 Your colours

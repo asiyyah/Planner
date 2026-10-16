@@ -1,7 +1,7 @@
 # Wedding Planner — MVP Build Plan
 
 > **Status (October 2026):** historical plan. Phases 0–8 have shipped, on Next.js 16 rather than 15, with the
-> divergences recorded in [`docs/decisions.md`](docs/decisions.md). Notable ones: 1–8 colours, multi-select wedding
+> divergences recorded in [`docs/decisions.md`](docs/decisions.md). Notable ones: 1–4 colours, multi-select wedding
 > types, couple-exclusive colours, no library snapping. `neutrals.ts`/`wedding-styles.ts` were folded into
 > `data/colors.ts` and `data/wedding-types.ts`. Phase 9 QA items (cross-browser, Lighthouse) have not been
 > verified. Current status lives in [`prd-findings.md`](prd-findings.md); the checkboxes below are left as written.

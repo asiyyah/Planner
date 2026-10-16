@@ -24,7 +24,7 @@ npx tsc --noEmit
 /plan        wizard: colours (1–4) → wedding types → styles → coordination → reveal
              (?d=<payload> prefills it — used by "Edit" and to survive refresh)
 /guide?d=…   server-rendered style guide, regenerated from the URL payload;
-             "Another option" links advance one section's reshuffle counter
+             "Regenerate" links advance one section's reshuffle counter
 /saved       guides saved on this device (localStorage, inputs only)
 ```
 

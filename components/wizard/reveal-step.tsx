@@ -85,9 +85,9 @@ export function RevealStep({
             Your colours
           </p>
           <div className="flex flex-wrap items-start justify-center gap-3">
-            {colors.map((hex) => (
+            {colors.map((hex, index) => (
               <div
-                key={hex}
+                key={`${hex}-${index}`}
                 className="swatch-frame h-24 w-24 sm:h-28 sm:w-28"
                 style={{
                   backgroundColor: hex,
@@ -152,7 +152,7 @@ export function RevealStep({
               <p className="font-heading text-3xl">Your palette is ready.</p>
               <Link
                 href={guideHref}
-                className="inline-block border border-black bg-black px-10 py-4 text-sm uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black"
+                className="inline-block rounded border border-black bg-black px-10 py-4 text-sm uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black"
               >
                 View your style guide →
               </Link>

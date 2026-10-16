@@ -1,4 +1,4 @@
-import { COLORS } from "@/data/colors";
+import { COLOR_NAMES } from "@/data/color-names";
 import { HARMONIES, TONE_WORDS } from "@/data/harmonies";
 import { METALS, type Metal, type MetalTemperature } from "@/data/metallics";
 import { BASE_TONE, type StyleTone } from "@/data/style-tones";
@@ -82,29 +82,35 @@ export function hexesNearDuplicate(hexA: string, hexB: string): boolean {
   return isNearDuplicate(hexToHsl(hexA), hexToHsl(hexB));
 }
 
-/** How far an arbitrary colour may sit from a library entry to borrow its name. */
-export const NAMING_TOLERANCE = 0.24;
+/**
+ * How far a colour may sit from a naming-library entry to borrow its name.
+ * The library is dense (~160 names), so this stays tight: names are
+ * accurate, and colours with no close match get a descriptive name.
+ */
+export const NAMING_TOLERANCE = 0.12;
+
+const NAME_ENTRIES = COLOR_NAMES.map((entry) => ({ ...entry, hsl: hexToHsl(entry.hex) }));
 
 /**
- * Nearest curated colour within naming tolerance — the library as optional
- * metadata (iteration §6). Returns null when a colour is truly its own thing.
+ * Nearest naming-library entry within tolerance, or null when a colour is
+ * truly its own thing. `allowMetals: false` skips metallic finish names.
  */
-export function nearestLibraryColor(
+export function nearestColorName(
   hsl: Hsl,
   options: { allowMetals?: boolean } = {}
-): { color: Color; distance: number } | null {
+): { name: string; distance: number } | null {
   const allowMetals = options.allowMetals ?? true;
-  let best = COLORS[0];
+  let best: string | null = null;
   let bestDist = Number.POSITIVE_INFINITY;
-  for (const color of COLORS) {
-    if (!allowMetals && color.category === "accent") continue;
-    const d = weightedDistance(hsl, colorToHsl(color));
+  for (const entry of NAME_ENTRIES) {
+    if (!allowMetals && entry.metal) continue;
+    const d = weightedDistance(hsl, entry.hsl);
     if (d < bestDist) {
       bestDist = d;
-      best = color;
+      best = entry.name;
     }
   }
-  return bestDist <= NAMING_TOLERANCE ? { color: best, distance: bestDist } : null;
+  return best !== null && bestDist <= NAMING_TOLERANCE ? { name: best, distance: bestDist } : null;
 }
 
 export function isAchromatic(color: Color): boolean {
@@ -125,19 +131,21 @@ function requireHex(hex: string): string {
 /* --------------------------- Descriptive naming ---------------------------- */
 
 const HUE_FAMILIES: ReadonlyArray<{ max: number; name: string }> = [
-  { max: 14, name: "Rose" },
-  { max: 34, name: "Terracotta" },
+  // Plain hue words — the naming library supplies the evocative names.
+  // "Yellow", not "Gold": metal names belong to the metallic accent.
+  { max: 14, name: "Red" },
+  { max: 34, name: "Orange" },
   { max: 49, name: "Amber" },
-  { max: 69, name: "Gold" },
-  { max: 89, name: "Olive" },
-  { max: 119, name: "Moss" },
-  { max: 149, name: "Emerald" },
+  { max: 69, name: "Yellow" },
+  { max: 89, name: "Lime" },
+  { max: 119, name: "Leaf" },
+  { max: 149, name: "Green" },
   { max: 179, name: "Teal" },
   { max: 209, name: "Sky" },
   { max: 244, name: "Blue" },
   { max: 269, name: "Indigo" },
   { max: 294, name: "Violet" },
-  { max: 319, name: "Plum" },
+  { max: 319, name: "Magenta" },
   { max: 344, name: "Berry" },
   { max: 361, name: "Rose" },
 ];
@@ -158,10 +166,10 @@ export function describeHsl({ h, s, l }: Hsl): string {
   if (l < 28) return `Deep ${family}`;
   if (l > 82) return `Pale ${family}`;
   if (s < 24) return `Dusty ${family}`;
+  if (l > 66) return `Soft ${family}`;
   return family;
 }
 
-/** Library name when close enough, otherwise a descriptive fallback. */
 /**
  * Library name when close enough, otherwise a descriptive fallback. Generated
  * colours pass `allowMetals: false` so a grey is never called "Silver" or a
@@ -172,8 +180,7 @@ export function describeColor(
   options: { allowMetals?: boolean } = {}
 ): string {
   const hsl = hexToHsl(hex);
-  const near = nearestLibraryColor(hsl, options);
-  return near ? near.color.name : describeHsl(hsl);
+  return nearestColorName(hsl, options)?.name ?? describeHsl(hsl);
 }
 
 /** Rough category inference so dynamic colours carry usable metadata. */
@@ -192,10 +199,9 @@ export function classifyColor({ h, s, l }: Hsl): ColorCategory {
 export function makeAnchorColor(hex: string, index: number): Color {
   const normalized = requireHex(hex);
   const hsl = hexToHsl(normalized);
-  const near = nearestLibraryColor(hsl);
   return {
     id: `anchor-${index}-${normalized.slice(1).toLowerCase()}`,
-    name: near ? near.color.name : describeHsl(hsl),
+    name: nearestColorName(hsl)?.name ?? describeHsl(hsl),
     hex: normalized,
     hue: hsl.h,
     saturation: hsl.s,

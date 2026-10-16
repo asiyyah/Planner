@@ -1,4 +1,5 @@
 import { DECOR_CATEGORY_LABELS } from "@/data/decor";
+import { CardHeader } from "./card-header";
 import type { DecorGuide } from "@/types";
 import { readableTextColor } from "@/lib/color/contrast";
 
@@ -18,13 +19,8 @@ export function DecorSection({
   ];
 
   return (
-    <article className="border border-black bg-white">
-      <header className="flex items-baseline justify-between border-b border-black px-6 py-4">
-        <span className="font-mono text-sm text-neutral-500">{number}</span>
-        <h2 id="decor" className="text-xs uppercase tracking-[0.25em]">
-          Decor
-        </h2>
-      </header>
+    <article className="overflow-hidden rounded border border-black bg-white">
+      <CardHeader number={number} title="Decor" titleId="decor" />
 
       {/* Colour roles */}
       <div className="grid grid-cols-2 md:grid-cols-4">

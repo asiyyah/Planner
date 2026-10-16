@@ -1,18 +1,20 @@
 import Link from "next/link";
+import { ShuffleIcon } from "lucide-react";
 
 /**
- * "Give me another option" — links to the same guide with this section's
- * reshuffle counter advanced. Back returns to the previous option.
+ * "Regenerate" — links to the same guide with this section's reshuffle
+ * counter advanced. Back returns to the previous option.
  */
 export function ShuffleLink({ href, section }: { href: string; section: string }) {
   return (
     <Link
       href={href}
       scroll={false}
-      aria-label={`Another option for ${section}`}
-      className="shrink-0 text-[10px] uppercase tracking-widest text-neutral-500 underline-offset-4 transition-colors hover:text-black hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-black print:hidden"
+      aria-label={`Regenerate ${section}`}
+      className="inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap text-sm text-black underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black print:hidden"
     >
-      ↻ Another option
+      <ShuffleIcon aria-hidden="true" className="h-5 w-5" />
+      Regenerate
     </Link>
   );
 }

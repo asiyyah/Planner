@@ -51,7 +51,7 @@ export default async function GuidePage({ searchParams }: GuidePageProps) {
         </p>
         <Link
           href="/plan"
-          className="mt-10 border border-black bg-black px-8 py-3 text-sm uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black"
+          className="mt-10 rounded border border-black bg-black px-8 py-3 text-sm uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black"
         >
           Start planning
         </Link>

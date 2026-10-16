@@ -39,7 +39,7 @@ Step 3  Wedding style  classic…luxury, multi-select
 Step 4  Coordination   same colours / different-but-coordinated (default: different)
 Reveal                 choreographed palette animation (~5s, reduced-motion aware)
        ↓
-/guide?d=<codec-v3>    guide generated synchronously on load
+/guide?d=<codec-v4>    guide generated synchronously on load
 ```
 
 Implementation notes:
@@ -62,7 +62,7 @@ Implementation notes:
 | Lock a colour, regenerate the rest | **Done** — picks are always locked; "Another option" on the palette regenerates everything added around them |
 | Restart a single role's suggestions | **Done** — "Another option" on couple Look 01 and Look 02, bridesmaids, groomsmen, each family and guests; kept in the share link |
 | Save to account | **Device-local only** — localStorage with rename/delete/reopen (§39 upheld; Supabase deferred) |
-| Export as shareable link | **Done** — compact URL codec v3 `hexes\|type+type\|styles\|coordination` (max 8 colours); v2 and legacy v1 links still decode |
+| Export as shareable link | **Done** — compact URL codec v4 `hexes\|type+type\|styles\|coordination\|reshuffles` (max 4 colours); v3, v2 and legacy v1 links still decode |
 | Export as PDF lookbook | **Partial** — browser print pipeline with print-hidden chrome (Decision D6); no dedicated branded PDF |
 
 ### Flow C — Return visit
@@ -79,7 +79,7 @@ Implementation notes:
 
 * **D1 — Auto-harmony beats manual harmony selection.** The original flow asked users to pick complementary/analogous/triadic/monochrome with previews; PRD §4 says users should never need colour-theory vocabulary. Iteration 01 resolved the conflict in favour of automation. An optional "advanced" override remains possible later if validation questions §51-1/2 demand it.
 * **D2 — Curated swatches removed from the picker.** The curated library (31 colours) was demoted to naming metadata so any picked hex gets a friendly name. If curation returns, it belongs *beside* the picker as a suggestion strip, not inside it (roadmap R4).
-* **D3 — Dynamic colour list (1–8) replaces fixed primary/secondary slots**, superseding §8 while preserving its "one colour is enough" rule.
+* **D3 — 1 to 4 colours replace fixed primary/secondary slots**, extending §8 while preserving its "one colour is enough" rule.
 * **D4 — Solid colours only.** Engine, swatches, and URL codec validate strict `#RRGGBB`; opacity sliders were intentionally omitted from the picker.
 * **D5 — localStorage instead of accounts** for saving (§39 upheld until sharing analytics justify Supabase).
 * **D6 — PDF export ships as browser print** for MVP; a branded PDF renderer is a post-validation upgrade.
@@ -91,7 +91,7 @@ Implementation notes:
 
 | # | Gap | Brief ref | Effort | Notes |
 | --- | --- | --- | --- | --- |
-| G1 | Venue/formality context (indoor-outdoor, casual-formal) affecting fabric & decor tone | Flow A-5 | S–M | Extend `PlannerInputs` + `StylingContext`; fabric/decor libraries already carry metadata hooks; needs codec v3 (backward compatible) |
+| G1 | Venue/formality context (indoor-outdoor, casual-formal) affecting fabric & decor tone | Flow A-5 | S–M | Extend `PlannerInputs` + `StylingContext`; fabric/decor libraries already carry metadata hooks; needs a codec bump (backward compatible) |
 | G2 | Family/guest guidance toggle ("include guest/family sections?") | Flow A-4 | S | Pure UI gating of guide sections; styling engine already isolates groups |
 | G3 | Wedding party counts (bridesmaids/groomsmen numbers) | Flow A-4 | S | Influences copy (e.g. mixed dress styles for large parties); low engine impact |
 | G4 | Theme input — free text + preset tags ("rustic", "garden romance", …) | Flow A-1 | M | Deterministic keyword→style-weight mapping keeps the no-AI rule (§40); feeds existing styles pipeline |
@@ -108,7 +108,7 @@ Implementation notes:
 ## 5. Recommended iterations (priority order)
 
 1. **R1 — Edit & regenerate (G5, G6)** — shipped.
-2. **R2 — Context inputs (G1, G2, G3).** Venue/formality, include-families/guests toggle, party counts; codec v3 with legacy decode; fabric/decor tone selection keyed off venue+formality.
+2. **R2 — Context inputs (G1, G2, G3).** Venue/formality, include-families/guests toggle, party counts; codec bump with legacy decode; fabric/decor tone selection keyed off venue+formality.
 3. **R3 — Theme tags (G4).** Preset tags + optional free text mapped onto style weights; no AI.
 4. **R4 — Curated swatch strip (G7).** Optional quick-pick row under the colour step.
 5. **R5 — Image inspiration (G8)** and **R6 — branded PDF (G10)** once core loops validate.

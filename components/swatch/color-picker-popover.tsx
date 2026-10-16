@@ -2,25 +2,25 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { HexColorInput, HexColorPicker } from "react-colorful";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { hexToRgb, normalizeHex, rgbToHex } from "@/lib/color/conversion";
+import { CheckIcon, ChevronDownIcon, CopyIcon, PipetteIcon } from "lucide-react";
+import { hexToRgb, rgbToHex } from "@/lib/color/conversion";
 
 /**
- * Design-tool colour picker (iteration 01.1).
+ * Design-tool colour picker card (Coolors-style).
  *
- * A compact Figma-style popover anchored to the trigger: saturation/lightness
- * field, full-spectrum hue slider, live preview, HEX and RGB entry, and an
- * optional native eyedropper. Draft state lives only while the popover is
- * open — the selection reaches the app exclusively through "Done", so
- * dismissing never overwrites an existing colour.
+ * Controlled and live: every drag, typed hex or RGB change is reported
+ * through `onChange` immediately — the caller decides what "cancel" means
+ * (the colour step restores the original on Esc).
+ *
+ *   Picker mode  saturation/lightness field + hue slider
+ *   RGB mode     red / green / blue sliders with exact number entry
+ *   Footer       mode switch, eyedropper (where supported), copy hex
  *
  * Deliberately free of curated swatches or wedding palettes: this control is
  * for free-form selection only.
  */
+
+type Mode = "picker" | "rgb";
 
 const noopSubscribe = () => () => {};
 
@@ -28,7 +28,7 @@ function eyeDropperAvailable(): boolean {
   return typeof window !== "undefined" && "EyeDropper" in window;
 }
 
-async function pickFromScreen(setHex: (hex: string) => void) {
+async function pickFromScreen(onPick: (hex: string) => void) {
   try {
     const ctor = (
       window as unknown as {
@@ -37,26 +37,33 @@ async function pickFromScreen(setHex: (hex: string) => void) {
     ).EyeDropper;
     if (!ctor) return;
     const result = await new ctor().open();
-    setHex(result.sRGBHex.toUpperCase());
+    onPick(result.sRGBHex.toUpperCase());
   } catch {
-    // Eyedropper cancelled — keep the current draft.
+    // Eyedropper cancelled — keep the current colour.
   }
 }
 
-function seedHex(initialHex: string | null | undefined): string {
-  return (initialHex && normalizeHex(initialHex)) || "#FFFFFF";
-}
+const CHANNELS = [
+  { key: "r", label: "Red" },
+  { key: "g", label: "Green" },
+  { key: "b", label: "Blue" },
+] as const;
+
+const ICON_BUTTON =
+  "flex h-10 w-10 items-center justify-center rounded text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-black";
 
 type PickerPanelProps = {
-  initialHex?: string | null;
-  /** Called once, on confirm. */
-  onDone: (hex: string) => void;
+  /** Current colour, `#RRGGBB`. */
+  hex: string;
+  /** Called on every change, live. */
+  onChange: (hex: string) => void;
 };
 
-export function ColorPickerPanel({ initialHex, onDone }: PickerPanelProps) {
-  // Fresh draft per open — the panel unmounts with the popover.
-  const [hex, setHex] = useState(() => seedHex(initialHex));
+export function ColorPickerPanel({ hex, onChange }: PickerPanelProps) {
+  const [mode, setMode] = useState<Mode>("picker");
+  const [copied, setCopied] = useState(false);
   const rgb = hexToRgb(hex);
+  const emit = (value: string) => onChange(value.toUpperCase());
 
   // Feature-detect without hydration mismatch (server snapshot: false).
   const eyeDropperSupported = useSyncExternalStore(
@@ -69,135 +76,125 @@ export function ColorPickerPanel({ initialHex, onDone }: PickerPanelProps) {
     const parsed = Number(raw);
     if (raw.trim() === "" || Number.isNaN(parsed)) return;
     const clamped = Math.max(0, Math.min(255, Math.round(parsed)));
-    setHex(rgbToHex({ ...rgb, [channel]: clamped }));
+    emit(rgbToHex({ ...rgb, [channel]: clamped }));
   };
 
+  async function copyHex() {
+    try {
+      await navigator.clipboard.writeText(hex);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard unavailable — the hex is still visible to copy by hand.
+    }
+  }
+
   return (
-    <div className="grid gap-3 text-black">
-      {/* Saturation / lightness field + hue slider */}
-      <div>
-        <p className="mb-1.5 text-[10px] uppercase tracking-widest text-neutral-500">
-          Hue &amp; shade
-        </p>
+    <div className="grid gap-4 text-black">
+      {mode === "picker" ? (
         <HexColorPicker
           color={hex}
-          onChange={setHex}
-          className="[--react-colorful-saturation-height:176px]"
+          onChange={emit}
+          className="colour-picker"
           aria-label="Colour field and hue slider"
         />
-      </div>
+      ) : (
+        <div className="grid gap-3">
+          {CHANNELS.map(({ key, label }) => (
+            <div key={key} className="grid grid-cols-[1fr_4.5rem] items-center gap-3">
+              <label className="grid gap-1.5">
+                <span className="text-[10px] uppercase tracking-widest text-neutral-500">
+                  {label}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={255}
+                  value={rgb[key]}
+                  onChange={(e) => setChannel(key, e.target.value)}
+                  aria-label={`${label} channel`}
+                  className="rgb-slider"
+                  style={{
+                    background: `linear-gradient(to right, ${rgbToHex({ ...rgb, [key]: 0 })}, ${rgbToHex({ ...rgb, [key]: 255 })})`,
+                  }}
+                />
+              </label>
+              <input
+                type="number"
+                min={0}
+                max={255}
+                step={1}
+                value={rgb[key]}
+                onChange={(e) => setChannel(key, e.target.value)}
+                onFocus={(e) => e.target.select()}
+                aria-label={`${label} value`}
+                className="mt-5 h-10 w-full rounded-lg border border-neutral-200 px-2 text-center font-mono text-sm outline-none focus:border-black"
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Preview + exact hex entry */}
-      <div className="flex items-center gap-2">
-        <span
-          className="h-9 w-9 shrink-0 rounded-md border border-neutral-300"
-          style={{ backgroundColor: hex }}
-          role="img"
-          aria-label={`Selected colour ${hex}`}
+      {/* Exact hex entry with a live swatch */}
+      <label className="flex h-14 items-center gap-2 rounded-xl border border-neutral-300 pl-4 pr-2 focus-within:border-black">
+        <span className="sr-only">Hex value</span>
+        <HexColorInput
+          color={hex}
+          onChange={emit}
+          prefixed
+          className="h-full min-w-0 flex-1 bg-transparent font-mono text-lg uppercase outline-none"
         />
-        <label className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="text-[10px] uppercase tracking-widest text-neutral-500">
-            Hex
-          </span>
-          <HexColorInput
-            color={hex}
-            onChange={setHex}
-            prefixed
-            aria-label="Hex value"
-            className="h-9 w-full min-w-0 border border-neutral-200 bg-white px-2 font-mono text-sm uppercase outline-none focus:border-black"
+        <span
+          aria-hidden="true"
+          className="h-9 w-9 shrink-0 rounded-md border border-black/10"
+          style={{ backgroundColor: hex }}
+        />
+      </label>
+
+      {/* Footer: mode switch · eyedropper · copy */}
+      <div className="-mx-4 -mb-4 flex items-center justify-between border-t border-neutral-200 px-4 py-2">
+        <label className="relative flex items-center">
+          <span className="sr-only">Picker mode</span>
+          <select
+            value={mode}
+            onChange={(e) => setMode(e.target.value as Mode)}
+            className="h-10 cursor-pointer appearance-none rounded bg-transparent pl-2 pr-8 text-base outline-none hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-black"
+          >
+            <option value="picker">Picker</option>
+            <option value="rgb">RGB</option>
+          </select>
+          <ChevronDownIcon
+            aria-hidden="true"
+            className="pointer-events-none absolute right-2 h-4 w-4"
           />
         </label>
-      </div>
-
-      {/* RGB entry */}
-      <div className="grid grid-cols-3 gap-2">
-        {(["r", "g", "b"] as const).map((channel) => (
-          <label key={channel} className="grid gap-1">
-            <span className="text-[10px] uppercase tracking-widest text-neutral-500">
-              {channel.toUpperCase()}
-            </span>
-            <input
-              type="number"
-              min={0}
-              max={255}
-              step={1}
-              value={rgb[channel]}
-              onChange={(event) => setChannel(channel, event.target.value)}
-              onFocus={(event) => event.target.select()}
-              aria-label={`${channel.toUpperCase()} channel`}
-              className="h-9 w-full border border-neutral-200 bg-white px-2 font-mono text-sm outline-none focus:border-black"
-            />
-          </label>
-        ))}
-      </div>
-
-      {/* Confirm (+ optional eyedropper) */}
-      <div className="mt-1 flex items-center justify-between gap-2">
-        {eyeDropperSupported ? (
+        <div className="flex items-center gap-1">
+          {eyeDropperSupported ? (
+            <button
+              type="button"
+              onClick={() => pickFromScreen(emit)}
+              aria-label="Pick a colour from the screen"
+              title="Pick a colour from the screen"
+              className={ICON_BUTTON}
+            >
+              <PipetteIcon aria-hidden="true" className="h-5 w-5" />
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={() => pickFromScreen(setHex)}
-            aria-label="Pick a colour from the screen"
-            title="Pick a colour from the screen"
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-neutral-200 transition-colors hover:border-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-black"
+            onClick={copyHex}
+            aria-label={copied ? "Hex copied" : `Copy ${hex}`}
+            title="Copy hex"
+            className={ICON_BUTTON}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="m2 22 1-1h3l9-9" />
-              <path d="M3 21v-3l9-9" />
-              <path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z" />
-            </svg>
+            {copied ? (
+              <CheckIcon aria-hidden="true" className="h-5 w-5" />
+            ) : (
+              <CopyIcon aria-hidden="true" className="h-5 w-5" />
+            )}
           </button>
-        ) : (
-          <span />
-        )}
-        <button
-          type="button"
-          onClick={() => onDone(hex)}
-          className="border border-black bg-black px-5 py-2 text-xs uppercase tracking-widest text-white transition-colors hover:bg-white hover:text-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black"
-        >
-          Done
-        </button>
+        </div>
       </div>
     </div>
-  );
-}
-
-type ColorPickerPopoverProps = {
-  children: React.ReactNode;
-  initialHex?: string | null;
-  onApply: (hex: string) => void;
-};
-
-/** Anchored picker popover: opens on click, closes outside/Esc, commits on Done. */
-export function ColorPickerPopover({
-  children,
-  initialHex,
-  onApply,
-}: ColorPickerPopoverProps) {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-4">
-        <ColorPickerPanel
-          initialHex={initialHex}
-          onDone={(hex) => {
-            onApply(hex);
-            setOpen(false);
-          }}
-        />
-      </PopoverContent>
-    </Popover>
   );
 }

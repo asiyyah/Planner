@@ -1,5 +1,7 @@
 import type { CoupleGuide, CoupleLook } from "@/types";
 import { ColorCard } from "@/components/swatch/color-card";
+import { CardHeader } from "./card-header";
+import { CardNote, DetailList } from "./card-details";
 import { ShuffleLink } from "./shuffle-link";
 
 /**
@@ -19,11 +21,8 @@ export function CouplePanel({
   shuffleHrefs: [string, string];
 }) {
   return (
-    <article className="border border-black bg-white">
-      <header className="flex items-baseline justify-between border-b border-black px-6 py-4">
-        <span className="font-mono text-sm text-neutral-500">{number}</span>
-        <h2 className="text-xs uppercase tracking-[0.25em]">{couple.title}</h2>
-      </header>
+    <article className="overflow-hidden rounded border border-black bg-white">
+      <CardHeader number={number} title={couple.title} />
 
       <div className="grid gap-px bg-neutral-200 md:grid-cols-2">
         {couple.looks.map((look, i) => (
@@ -36,9 +35,9 @@ export function CouplePanel({
 
 function LookCard({ look, shuffleHref }: { look: CoupleLook; shuffleHref: string }) {
   return (
-    <div className="flex h-full flex-col gap-5 bg-white p-6">
-      <div className="flex items-baseline justify-between gap-4">
-        <h3 className="font-heading text-2xl italic">{look.label}</h3>
+    <div className="flex h-full flex-col gap-4 bg-white p-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-4">
+        <h3 className="font-heading text-2xl">{look.label}</h3>
         <ShuffleLink href={shuffleHref} section={look.label} />
       </div>
 
@@ -49,36 +48,15 @@ function LookCard({ look, shuffleHref }: { look: CoupleLook; shuffleHref: string
         ))}
       </div>
 
-      <dl className="space-y-3 text-sm">
-        {look.outfits.length > 0 && (
-          <div>
-            <dt className="text-[10px] uppercase tracking-widest text-neutral-500">
-              Outfit
-            </dt>
-            <dd>{look.outfits.join(" · ")}</dd>
-          </div>
-        )}
-        {look.fabrics.length > 0 && (
-          <div>
-            <dt className="text-[10px] uppercase tracking-widest text-neutral-500">
-              Fabric suggestions
-            </dt>
-            <dd>{look.fabrics.join(" · ")}</dd>
-          </div>
-        )}
-        {look.accessories && look.accessories.length > 0 ? (
-          <div>
-            <dt className="text-[10px] uppercase tracking-widest text-neutral-500">
-              Accents &amp; accessories
-            </dt>
-            <dd>{look.accessories.join(" · ")}</dd>
-          </div>
-        ) : null}
-      </dl>
+      <DetailList
+        items={[
+          { label: "Outfit", values: look.outfits },
+          { label: "Fabric suggestions", values: look.fabrics },
+          { label: "Accents & accessories", values: look.accessories },
+        ]}
+      />
 
-      <p className="mt-auto border-t border-neutral-200 pt-4 text-sm italic leading-relaxed text-neutral-600">
-        {look.notes}
-      </p>
+      <CardNote>{look.notes}</CardNote>
     </div>
   );
 }

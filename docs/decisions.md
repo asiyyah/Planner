@@ -9,8 +9,10 @@ surviving record of what they decided.
 - **D1 — Harmony is chosen by the engine, not the user.** The palette's harmony (complementary,
   analogous, triadic, split-complementary, tetradic, square, monochromatic) is inferred from the
   anchor colours and explained in plain language (PRD §4, §13).
-- **D2 — No curated swatches inside the picker.** The 31-colour library is naming metadata; any
-  picked hex gets a friendly name.
+- **D2 — No curated swatches inside the picker.** Colours are named from a ~170-name library
+  (`data/color-names.ts`) that is used for naming only, never to pick or seed colours. A colour
+  borrows a name only when it is a close match; otherwise it gets a plain descriptive name ("Soft
+  Indigo", "Deep Magenta").
 - **D3 — 1 to 4 colours**, any hex (PRD §8 asked for two; four gives couples more room). One colour
   is enough — the engine generates its partners. Links carrying more than 4 keep the first four.
 - **D4 — Solid colours only** (`#RRGGBB`, no alpha).
@@ -27,6 +29,8 @@ surviving record of what they decided.
     copper, rose gold, silver, platinum, pewter (`data/metallics.ts`) — by the palette's
     temperature and the chosen styles.
   - Generated colours never borrow metal names (a grey is "Cloud Grey", not "Silver").
+  - Opening the picker never adds a colour: a new slot stays empty until the user picks, and the
+    picker starts on a plain grey that suggests nothing.
 - **Style shapes colour.** Each style has a tone (`data/style-tones.ts`): Bold, Traditional and
   Luxury are richer and deeper; Romantic and Minimal softer and airier; several styles blend. For
   a single pick, the style also leads the harmony (rich styles start complementary).
@@ -66,6 +70,29 @@ surviving record of what they decided.
   White and Ivory on the guest "avoid" list.
 - **Decor uses the master palette**: neutral as base, hero as primary, the user's second colour (or
   the promoted companion) as secondary, metallic as accent.
+
+## Interface
+
+- **Mobile navigation is a hamburger menu below 768px.** Shrinking the full menu made links wrap
+  onto two lines; between 640px and 768px the desktop row is still too tight, so the switch sits at
+  tablet width. Desktop is unchanged.
+- **The colour step is a Coolors-style strip.** Picks form one joined bar with names and hex codes;
+  tapping a block edits it in place, + adds (up to 4), − removes the selected colour. Names stay
+  visible because most couples are not designers, at the cost of truncation on small phones.
+- **Live editing, Esc to undo.** Picker changes apply as you drag, like Coolors, instead of waiting
+  for a Done button; Esc restores the colour (or drops a just-added one), clicking outside keeps it.
+- **Card headers read "03 Bridesmaids" on the left, "⇄ Regenerate" on the right** (a black text
+  link with a shuffle icon; it was labelled "Another option" until the October 2026 card designs).
+  Cards follow those designs: short colour chips, grey sentence-case labels, upright grey notes;
+  the cover stacks title, subtitle, a slim palette strip and then the action row.
+- **Cards and buttons share a 4px corner radius** (guide, saved and landing cards; filled,
+  outlined and ghost buttons; the wizard's choice buttons) instead of sharp corners. The wizard's
+  step-number markers stay square; plain text links have no shape to round.
+- **Guide actions are ranked:** Edit is the primary button, Save the secondary, and Share link and
+  Print / Save PDF are ghost (text) buttons.
+- **Two picker modes only: Picker and RGB.** HSB/HSL/CMYK were left out to keep the card simple.
+- **The interface stays black and white** (PRD §26) even where Coolors uses colour; the user's
+  colours are the only colour on screen.
 
 ## Persistence & sharing
 
